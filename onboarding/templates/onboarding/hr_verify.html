@@ -1,0 +1,79 @@
+{% extends 'onboarding/base.html' %}
+
+{% block title %}HR Verification - AEC Group{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-2xl font-bold text-slate-900">Pending HR Verifications</h1>
+    <p class="text-slate-500 text-sm mt-1">Review candidate documents and issue Official Joining Letters.</p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for profile in profiles %}
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+        <!-- Card Header -->
+        <div class="p-5 border-b border-slate-100 flex items-start justify-between">
+            <div class="flex items-center space-x-4">
+                {% if profile.user.profile_picture %}
+                <img src="{{ profile.user.profile_picture.url }}" alt="Profile" class="h-12 w-12 rounded-full object-cover ring-2 ring-slate-100">
+                {% else %}
+                <div class="h-12 w-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold">
+                    {{ profile.user.first_name|first }}
+                </div>
+                {% endif %}
+                <div>
+                    <h3 class="text-base font-semibold text-slate-900">{{ profile.user.get_full_name }}</h3>
+                    <p class="text-xs text-slate-500">{{ profile.department.name }}</p>
+                </div>
+            </div>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                Pending
+            </span>
+        </div>
+
+        <!-- Docs Preview -->
+        <div class="p-5 flex-grow">
+            <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Documents</h4>
+            <div class="space-y-2 text-sm">
+                {% for key, doc in profile.docs_vault.items %}
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-600 capitalize">{{ key }}</span>
+                    <a href="{{ doc.url }}" target="_blank" class="text-blue-600 hover:text-blue-800 font-medium">View</a>
+                </div>
+                {% empty %}
+                <span class="text-slate-400 italic">No documents uploaded.</span>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-end space-x-3">
+            <form method="post" class="inline">
+                {% csrf_token %}
+                <input type="hidden" name="profile_id" value="{{ profile.id }}">
+                <input type="hidden" name="action" value="reject">
+                <button type="submit" class="px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 focus:ring-4 focus:ring-red-100 transition-all">
+                    Reject & Remove
+                </button>
+            </form>
+            <form method="post" class="inline">
+                {% csrf_token %}
+                <input type="hidden" name="profile_id" value="{{ profile.id }}">
+                <input type="hidden" name="action" value="confirm">
+                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-all">
+                    Verify & Send PDF
+                </button>
+            </form>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-span-full py-12 text-center">
+        <svg class="mx-auto h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-slate-900">No pending verifications</h3>
+        <p class="mt-1 text-sm text-slate-500">All candidate profiles have been reviewed.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

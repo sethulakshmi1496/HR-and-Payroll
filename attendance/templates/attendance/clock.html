@@ -1,0 +1,161 @@
+{% extends 'onboarding/base.html' %}
+
+{% block title %}Clock In/Out - AEC Group{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Note: In production, face-api.js weights should be loaded from static files -->
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+            <div>
+                <h2 class="text-xl font-bold text-slate-900">Attendance</h2>
+                <p class="text-sm text-slate-500">{{ department.name }}</p>
+            </div>
+            <div>
+                {% if status == 'in' %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                    Currently Checked In
+                </span>
+                {% else %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-800">
+                    Currently Checked Out
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="p-6 space-y-6">
+            <!-- Map Container -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">Your Location</label>
+                <div id="map" class="h-48 w-full bg-slate-100 rounded-lg border border-slate-200"></div>
+                <p id="location-status" class="text-xs text-slate-500 mt-2">Detecting location...</p>
+            </div>
+
+            <!-- Webcam Container -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">Face Verification</label>
+                <div class="relative bg-black rounded-lg overflow-hidden border border-slate-200 w-full h-48 flex items-center justify-center">
+                    <video id="video" class="h-full w-full object-cover" autoplay muted playsinline></video>
+                    <canvas id="canvas" class="hidden"></canvas>
+                </div>
+            </div>
+
+            <form id="attendance-form" class="flex space-x-4 pt-4 border-t border-slate-100">
+                {% csrf_token %}
+                <input type="hidden" id="lat" name="latitude">
+                <input type="hidden" id="lon" name="longitude">
+                <input type="hidden" id="face_image" name="face_image">
+                <input type="hidden" id="action" name="action">
+
+                {% if status == 'out' %}
+                <button type="button" onclick="submitAttendance('in')" class="flex-1 bg-blue-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-all flex justify-center items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
+                    Clock In
+                </button>
+                {% else %}
+                <button type="button" onclick="submitAttendance('out')" class="flex-1 bg-red-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-red-700 focus:ring-4 focus:ring-red-200 transition-all flex justify-center items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    Clock Out
+                </button>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    let map, marker, userLat, userLon;
+    const deptLat = {{ department.latitude|default:"null" }};
+    const deptLon = {{ department.longitude|default:"null" }};
+
+    // Initialize Map
+    if (deptLat && deptLon) {
+        map = L.map('map').setView([deptLat, deptLon], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        L.circle([deptLat, deptLon], { radius: 100, color: 'blue', fillColor: '#3b82f6', fillOpacity: 0.2 }).addTo(map);
+    } else {
+        map = L.map('map').setView([9.931233, 76.267303], 13); // Default Kochi
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    }
+
+    // Get Location
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((position) => {
+            userLat = position.coords.latitude;
+            userLon = position.coords.longitude;
+            document.getElementById('lat').value = userLat;
+            document.getElementById('lon').value = userLon;
+            
+            map.setView([userLat, userLon], 16);
+            if(marker) map.removeLayer(marker);
+            marker = L.marker([userLat, userLon]).addTo(map);
+            document.getElementById('location-status').innerText = "Location detected.";
+        }, () => {
+            document.getElementById('location-status').innerText = "Location access denied. IP will be used.";
+        });
+    }
+
+    // Setup Webcam
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ video: true }).then(function(stream) {
+            video.srcObject = stream;
+            video.play();
+        });
+    }
+
+    // Submit Action
+    function submitAttendance(action) {
+        document.getElementById('action').value = action;
+        
+        // Capture Face image safely
+        try {
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+                const context = canvas.getContext('2d');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                document.getElementById('face_image').value = canvas.toDataURL('image/jpeg', 0.8);
+            }
+        } catch(e) {
+            console.log("Webcam capture skipped or failed:", e);
+        }
+
+        // Submit via Fetch
+        const form = document.getElementById('attendance-form');
+        const formData = new FormData(form);
+
+        fetch("{% url 'attendance:clock' %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+            }
+        })
+        .then(response => {
+            if (!response.ok) { throw new Error('Network response was not ok'); }
+            return response.json();
+        })
+        .then(data => {
+            if(data.success) {
+                alert(data.message + (data.is_valid ? " (Valid Location)" : " (Out of Geofence)"));
+                window.location.reload();
+            } else {
+                alert("Error: " + data.message);
+            }
+        })
+        .catch(err => {
+            alert("A server error occurred. Please check console.");
+            console.error(err);
+        });
+    }
+</script>
+{% endblock %}
