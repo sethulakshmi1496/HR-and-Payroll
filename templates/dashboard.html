@@ -1,0 +1,91 @@
+{% extends 'onboarding/base.html' %}
+
+{% block title %}Dashboard - AEC HR SuperApp{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-slate-900">Welcome, {{ request.user.first_name|default:request.user.username }}</h1>
+    <p class="text-slate-500 mt-1">Role: <span class="font-medium text-slate-700">{{ request.user.get_role_display }}</span></p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <a href="{% url 'attendance:clock' %}" data-testid="card-clock"
+       class="block bg-white border border-slate-200 rounded-xl p-6 hover:shadow-md hover:border-blue-300 transition">
+        <div class="text-blue-600 mb-3">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <h3 class="font-semibold text-slate-900">Clock In / Out</h3>
+        <p class="text-sm text-slate-500 mt-1">Mark your attendance with GPS + Face capture.</p>
+    </a>
+
+    <a href="{% url 'attendance:dashboard' %}" data-testid="card-attendance-dashboard"
+       class="block bg-white border border-slate-200 rounded-xl p-6 hover:shadow-md hover:border-blue-300 transition">
+        <div class="text-emerald-600 mb-3">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </div>
+        <h3 class="font-semibold text-slate-900">Attendance Dashboard</h3>
+        <p class="text-sm text-slate-500 mt-1">Heatmap, history & live locations.</p>
+    </a>
+
+    <a href="{% url 'payroll:dashboard' %}" data-testid="card-payroll"
+       class="block bg-white border border-slate-200 rounded-xl p-6 hover:shadow-md hover:border-blue-300 transition">
+        <div class="text-amber-600 mb-3">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <h3 class="font-semibold text-slate-900">Payroll</h3>
+        <p class="text-sm text-slate-500 mt-1">Payslips, generation, deductions & tax.</p>
+    </a>
+
+    {% if request.user.role == 'HR' or request.user.role == 'MD' %}
+    <a href="{% url 'onboarding:invite' %}" data-testid="card-onboarding"
+       class="block bg-white border border-slate-200 rounded-xl p-6 hover:shadow-md hover:border-blue-300 transition">
+        <div class="text-indigo-600 mb-3">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+        </div>
+        <h3 class="font-semibold text-slate-900">Onboarding</h3>
+        <p class="text-sm text-slate-500 mt-1">Invite & verify new candidates.</p>
+    </a>
+    {% endif %}
+
+    <a href="{% url 'leave:list' %}" data-testid="card-leave"
+       class="block bg-white border border-slate-200 rounded-xl p-6 hover:shadow-md hover:border-blue-300 transition">
+        <div class="text-rose-600 mb-3">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        </div>
+        <h3 class="font-semibold text-slate-900">Leave</h3>
+        <p class="text-sm text-slate-500 mt-1">Apply, approve & track leaves.</p>
+    </a>
+
+    <a href="{% url 'assets:dashboard' %}" data-testid="card-assets"
+       class="block bg-white border border-slate-200 rounded-xl p-6 hover:shadow-md hover:border-blue-300 transition">
+        <div class="text-cyan-600 mb-3">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+        </div>
+        <h3 class="font-semibold text-slate-900">Assets & NOC</h3>
+        <p class="text-sm text-slate-500 mt-1">Phones, SIMs, equipment & NOC.</p>
+    </a>
+
+    {% if request.user.role == 'MD' %}
+    <a href="{% url 'twofa:setup' %}" data-testid="card-2fa"
+       class="block bg-white border border-slate-200 rounded-xl p-6 hover:shadow-md hover:border-purple-300 transition">
+        <div class="text-purple-600 mb-3">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+        </div>
+        <h3 class="font-semibold text-slate-900">2-Factor Auth</h3>
+        <p class="text-sm text-slate-500 mt-1">MD security setup.</p>
+    </a>
+    {% endif %}
+
+    <form method="post" action="{% url 'logout' %}" class="block">
+        {% csrf_token %}
+        <button type="submit" data-testid="logout-btn"
+                class="w-full text-left bg-white border border-slate-200 rounded-xl p-6 hover:shadow-md hover:border-red-300 transition">
+            <div class="text-red-600 mb-3">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+            </div>
+            <h3 class="font-semibold text-slate-900">Logout</h3>
+            <p class="text-sm text-slate-500 mt-1">End your session.</p>
+        </button>
+    </form>
+</div>
+{% endblock %}

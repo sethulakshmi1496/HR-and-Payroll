@@ -21,17 +21,43 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'django_extensions',
+    'django_q',
+    'django_otp',
+    'django_otp.plugins.otp_totp',
+    'django_otp.plugins.otp_static',
     'core',
     'onboarding',
     'attendance',
+    'payroll',
+    'leave',
+    'twofa',
+    'assets',
 ]
+
+# django-q2 — real worker via supervisor (program:qcluster). sync=True only
+# kicks in if the worker is unavailable (allows tests to keep working).
+Q_CLUSTER = {
+    'name': 'aec_hr',
+    'workers': 2,
+    'recycle': 500,
+    'timeout': 60,
+    'retry': 120,
+    'queue_limit': 50,
+    'bulk': 5,
+    'orm': 'default',
+    'sync': config('Q_CLUSTER_SYNC', default=False, cast=bool),
+    'log_level': 'INFO',
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django_otp.middleware.OTPMiddleware',
+    'twofa.middleware.EnforceMD2FAMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -72,7 +98,12 @@ AUTH_PASSWORD_VALIDATORS = [
 
 AUTH_USER_MODEL = 'core.User'
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'en'
+LANGUAGES = [
+    ('en', 'English'),
+    ('ml', 'മലയാളം'),
+]
+LOCALE_PATHS = [BASE_DIR / 'locale']
 TIME_ZONE = 'Asia/Kolkata'
 USE_I18N = True
 USE_TZ = True
@@ -92,9 +123,17 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 25,
 }
 
-LOGIN_URL = '/auth/login/'
+LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
-LOGOUT_REDIRECT_URL = '/auth/login/'
+LOGOUT_REDIRECT_URL = '/accounts/login/'
+
+# CSRF-trusted origins (Emergent preview & cluster URLs).
+# Wildcard subdomains for *.preview.emergentagent.com & *.preview.emergentcf.cloud
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default='https://*.preview.emergentagent.com,https://*.preview.emergentcf.cloud,http://localhost:3000,http://localhost:8001',
+    cast=Csv(),
+)
 
 if DEBUG:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

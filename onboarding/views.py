@@ -12,6 +12,10 @@ from core.models import User, EmployeeProfile, AuditLog
 from .models import InviteToken
 from .forms import HRInviteForm, CandidateOnboardingForm
 from .utils import generate_official_joining_letter
+<<<<<<< HEAD
+=======
+from twofa.emails import send_html_mail
+>>>>>>> origin/conflict_080526_1642
 
 class HRRequiredMixin(UserPassesTestMixin):
     def test_func(self):
@@ -104,7 +108,17 @@ class CandidateView(View):
 class HRVerifyView(HRRequiredMixin, View):
     def get(self, request):
         pending_profiles = EmployeeProfile.objects.filter(is_locked=False, user__is_active=False)
+<<<<<<< HEAD
         return render(request, 'onboarding/hr_verify.html', {'profiles': pending_profiles})
+=======
+        locked_profiles = EmployeeProfile.objects.filter(user__is_active=True).exclude(
+            user__username__in=['md_aec', 'hr_aec']
+        ).select_related('user', 'department').order_by('-updated_at')[:30]
+        return render(request, 'onboarding/hr_verify.html', {
+            'profiles': pending_profiles,
+            'locked_profiles': locked_profiles,
+        })
+>>>>>>> origin/conflict_080526_1642
 
     def post(self, request):
         profile_id = request.POST.get('profile_id')
@@ -118,6 +132,7 @@ class HRVerifyView(HRRequiredMixin, View):
             profile.save()
             profile.user.save()
             
+<<<<<<< HEAD
             # Generate PDF and Email
             pdf_data, pdf_path = generate_official_joining_letter(profile)
             
@@ -126,6 +141,21 @@ class HRVerifyView(HRRequiredMixin, View):
             email = EmailMessage(subject, body, to=[profile.user.email])
             email.attach(f"Joining_Letter_{profile.employee_id}.pdf", pdf_data, 'application/pdf')
             email.send()
+=======
+            # Generate PDF and send HTML welcome email
+            pdf_data, pdf_path = generate_official_joining_letter(profile)
+            send_html_mail(
+                subject="Welcome to AEC Group — Joining Letter",
+                template_name='email/onboarding_welcome.html',
+                context={'profile': profile},
+                to=[profile.user.email],
+                attachments=[(
+                    f"Joining_Letter_{profile.employee_id}.pdf",
+                    pdf_data,
+                    'application/pdf',
+                )],
+            )
+>>>>>>> origin/conflict_080526_1642
             
             # Audit Log
             AuditLog.objects.create(
@@ -143,3 +173,36 @@ class HRVerifyView(HRRequiredMixin, View):
             user.delete()
             
         return redirect('onboarding:hr_verify')
+<<<<<<< HEAD
+=======
+
+
+
+class ProfileUnlockView(HRRequiredMixin, View):
+    """HR/MD action: temporarily UNLOCK a verified profile so the employee
+    can re-upload a corrected document. Lock auto-restored after employee
+    re-uploads or after 24h (HR can manually re-lock from /hr/verify/).
+    """
+    def post(self, request, pk):
+        profile = get_object_or_404(EmployeeProfile, pk=pk)
+        action = request.POST.get('action', 'unlock')
+        if action == 'unlock':
+            profile.is_locked = False
+            profile.save(update_fields=['is_locked'])
+            AuditLog.objects.create(
+                profile=profile, performed_by=request.user,
+                action=AuditLog.ActionType.PROFILE_UPDATED,
+                details={'unlocked': True, 'reason': request.POST.get('reason', '')},
+                ip_address=request.META.get('REMOTE_ADDR'),
+            )
+        elif action == 'relock':
+            profile.is_locked = True
+            profile.save(update_fields=['is_locked'])
+            AuditLog.objects.create(
+                profile=profile, performed_by=request.user,
+                action=AuditLog.ActionType.PROFILE_LOCKED,
+                details={'relocked': True},
+                ip_address=request.META.get('REMOTE_ADDR'),
+            )
+        return redirect('onboarding:hr_verify')
+>>>>>>> origin/conflict_080526_1642

@@ -104,9 +104,39 @@ class DashboardView(LoginRequiredMixin, View):
         
         if user.role in [User.Role.MD, User.Role.HR]:
             # MD/HR View: All attendance for today
+<<<<<<< HEAD
             today = timezone.now().date()
             context['attendances'] = Attendance.objects.filter(date=today).select_related('profile__user', 'profile__department')
             context['is_manager'] = True
+=======
+            from core.models import Department
+            from django.utils import timezone as _tz
+            today = _tz.now().date()
+            todays = Attendance.objects.filter(date=today).select_related(
+                'profile__user', 'profile__department'
+            )
+            context['attendances'] = todays
+            context['is_manager'] = True
+
+            # Heatmap aggregation: per department -> present vs total active
+            depts = Department.objects.filter(is_active=True).order_by('name')
+            labels, presents, totals = [], [], []
+            for d in depts:
+                total_emp = d.employees.filter(is_active=True).count()
+                if total_emp == 0:
+                    continue
+                present_emp = todays.filter(
+                    profile__department=d,
+                    in_time__isnull=False,
+                    is_valid=True,
+                ).count()
+                labels.append(d.code)
+                presents.append(present_emp)
+                totals.append(total_emp)
+            context['heatmap_labels'] = labels
+            context['heatmap_present'] = presents
+            context['heatmap_total'] = totals
+>>>>>>> origin/conflict_080526_1642
         else:
             # Staff View: Personal history
             try:
@@ -114,6 +144,64 @@ class DashboardView(LoginRequiredMixin, View):
                 context['attendances'] = Attendance.objects.filter(profile=profile).order_by('-date')[:30]
                 context['is_manager'] = False
             except EmployeeProfile.DoesNotExist:
+<<<<<<< HEAD
                 pass
                 
         return render(request, 'attendance/dashboard.html', context)
+=======
+                context['attendances'] = []
+                context['is_manager'] = False
+                
+        return render(request, 'attendance/dashboard.html', context)
+
+
+class LivePresenceView(LoginRequiredMixin, View):
+    """JSON endpoint polled every 30s by the dashboard to refresh
+    the heatmap / map without a page reload (lighter alternative to
+    Django Channels websockets)."""
+    def get(self, request):
+        from django.utils import timezone as _tz
+        from django.http import JsonResponse
+        from core.models import Department
+
+        if request.user.role not in [User.Role.MD, User.Role.HR, User.Role.DEPT_HEAD]:
+            return JsonResponse({'error': 'forbidden'}, status=403)
+
+        today = _tz.now().date()
+        todays = Attendance.objects.filter(date=today, in_time__isnull=False).select_related(
+            'profile__user', 'profile__department'
+        )
+        if request.user.role == User.Role.DEPT_HEAD:
+            todays = todays.filter(profile__department__head=request.user)
+
+        depts = Department.objects.filter(is_active=True).order_by('name')
+        labels, presents, totals = [], [], []
+        for d in depts:
+            total_emp = d.employees.filter(is_active=True).count()
+            if total_emp == 0:
+                continue
+            labels.append(d.code)
+            presents.append(todays.filter(profile__department=d, is_valid=True).count())
+            totals.append(total_emp)
+
+        markers = [
+            {
+                'name': r.profile.user.get_full_name(),
+                'dept': r.profile.department.code,
+                'lat': float(r.gps_latitude) if r.gps_latitude else None,
+                'lon': float(r.gps_longitude) if r.gps_longitude else None,
+                'in': r.in_time.isoformat() if r.in_time else None,
+                'out': r.out_time.isoformat() if r.out_time else None,
+                'is_late': r.is_late,
+            }
+            for r in todays if r.gps_latitude and r.gps_longitude
+        ]
+
+        return JsonResponse({
+            'as_of': _tz.now().isoformat(),
+            'labels': labels,
+            'present': presents,
+            'total': totals,
+            'markers': markers,
+        })
+>>>>>>> origin/conflict_080526_1642

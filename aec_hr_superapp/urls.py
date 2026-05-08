@@ -1,4 +1,5 @@
 """
+<<<<<<< HEAD
 URL configuration for aec_hr_superapp project.
 """
 from django.contrib import admin
@@ -10,6 +11,35 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('onboarding/', include('onboarding.urls')),
     path('attendance/', include('attendance.urls')),
+=======
+URL configuration for aec_hr_superapp.
+"""
+from django.contrib import admin
+from django.contrib.auth.decorators import login_required
+from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
+from django.shortcuts import redirect, render
+
+
+@login_required
+def dashboard(request):
+    return render(request, 'dashboard.html')
+
+
+urlpatterns = [
+    path('', lambda r: redirect('dashboard') if r.user.is_authenticated else redirect('login')),
+    path('admin/', admin.site.urls),
+    path('accounts/', include('django.contrib.auth.urls')),
+    path('i18n/', include('django.conf.urls.i18n')),  # set_language POST endpoint
+    path('dashboard/', dashboard, name='dashboard'),
+    path('onboarding/', include('onboarding.urls')),
+    path('attendance/', include('attendance.urls')),
+    path('payroll/', include('payroll.urls')),
+    path('leave/', include('leave.urls')),
+    path('2fa/', include('twofa.urls')),
+    path('assets/', include('assets.urls')),
+>>>>>>> origin/conflict_080526_1642
 ]
 
 if settings.DEBUG:

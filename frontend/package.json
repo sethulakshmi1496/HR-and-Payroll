@@ -1,0 +1,9 @@
+{
+  "name": "aec-hr-frontend-shim",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shim that runs Django (templates) on port 3000 so the public preview URL serves the Django app.",
+  "scripts": {
+    "start": "cd /app && exec /root/.venv/bin/python manage.py runserver 0.0.0.0:3000 --noreload --insecure"
+  }
+}

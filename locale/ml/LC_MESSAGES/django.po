@@ -1,0 +1,174 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: AEC HR\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-05-08 12:00+0530\n"
+"Language: ml\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Leave"
+msgstr "അവധി"
+
+msgid "Attendance"
+msgstr "ഹാജർ"
+
+msgid "Payroll"
+msgstr "ശമ്പളം"
+
+msgid "Logout"
+msgstr "ലോഗൗട്ട്"
+
+msgid "All rights reserved."
+msgstr "എല്ലാ അവകാശങ്ങളും നിക്ഷിപ്തം."
+
+msgid "Leave Requests"
+msgstr "അവധി അപേക്ഷകൾ"
+
+msgid "Review pending requests and approve or reject."
+msgstr "തീരുമാനം എടുക്കാത്ത അപേക്ഷകൾ പരിശോധിച്ച് അംഗീകരിക്കുകയോ നിരസിക്കുകയോ ചെയ്യുക."
+
+msgid "Submit and track your leave requests."
+msgstr "നിങ്ങളുടെ അവധി അപേക്ഷകൾ സമർപ്പിച്ച് ട്രാക്ക് ചെയ്യുക."
+
+msgid "New Request"
+msgstr "പുതിയ അപേക്ഷ"
+
+msgid "Pending"
+msgstr "തീരുമാനം എടുക്കാത്തത്"
+
+msgid "Employee"
+msgstr "ജീവനക്കാരൻ"
+
+msgid "Type"
+msgstr "തരം"
+
+msgid "From"
+msgstr "മുതൽ"
+
+msgid "To"
+msgstr "വരെ"
+
+msgid "Reason"
+msgstr "കാരണം"
+
+msgid "Action"
+msgstr "നടപടി"
+
+msgid "Approve"
+msgstr "അംഗീകരിക്കുക"
+
+msgid "Reject"
+msgstr "നിരസിക്കുക"
+
+msgid "No pending requests."
+msgstr "തീരുമാനം എടുക്കാത്ത അപേക്ഷകളില്ല."
+
+msgid "History"
+msgstr "ചരിത്രം"
+
+msgid "Status"
+msgstr "നില"
+
+msgid "Approved"
+msgstr "അംഗീകരിച്ചു"
+
+msgid "Rejected"
+msgstr "നിരസിച്ചു"
+
+msgid "Cancelled"
+msgstr "റദ്ദാക്കി"
+
+msgid "Cancel"
+msgstr "റദ്ദാക്കുക"
+
+msgid "No history."
+msgstr "ചരിത്രമില്ല."
+
+msgid "Request Leave"
+msgstr "അവധി അപേക്ഷിക്കുക"
+
+msgid "Probation: 1/month. Permanent: 2/month."
+msgstr "പ്രൊബേഷൻ: മാസത്തിൽ 1. സ്ഥിരം: മാസത്തിൽ 2."
+
+msgid "Submit Request"
+msgstr "അപേക്ഷ സമർപ്പിക്കുക"
+
+msgid "Two-Factor Authentication"
+msgstr "ദ്വി-ഘടക പ്രാമാണീകരണം"
+
+msgid "Required for Managing Director accounts. Scan the QR with Google Authenticator / Authy / 1Password and enter the 6-digit code."
+msgstr "മാനേജിംഗ് ഡയറക്ടർ അക്കൗണ്ടുകൾക്ക് നിർബന്ധം. ഗൂഗിൾ ഓതെന്റിക്കേറ്ററിൽ QR സ്കാൻ ചെയ്ത് 6-അക്ക കോഡ് നൽകുക."
+
+msgid "Cannot scan? Use this secret:"
+msgstr "സ്കാൻ ചെയ്യാൻ കഴിയുന്നില്ലേ? ഈ രഹസ്യം ഉപയോഗിക്കുക:"
+
+msgid "6-digit code"
+msgstr "6-അക്ക കോഡ്"
+
+msgid "Verify & Enable"
+msgstr "സ്ഥിരീകരിച്ച് പ്രവർത്തനക്ഷമമാക്കുക"
+
+msgid "Verify Your Identity"
+msgstr "നിങ്ങളുടെ ഐഡന്റിറ്റി പരിശോധിക്കുക"
+
+msgid "Open your authenticator app and enter the 6-digit code."
+msgstr "നിങ്ങളുടെ ഓതെന്റിക്കേറ്റർ ആപ്പ് തുറന്ന് 6-അക്ക കോഡ് നൽകുക."
+
+msgid "Verify"
+msgstr "പരിശോധിക്കുക"
+
+msgid "Set up Two-Factor"
+msgstr "ദ്വി-ഘടക സജ്ജീകരണം"
+
+msgid "Verify 2FA"
+msgstr "2FA പരിശോധിക്കുക"
+
+msgid "Two-factor authentication enabled."
+msgstr "ദ്വി-ഘടക പ്രാമാണീകരണം പ്രവർത്തനക്ഷമമാക്കി."
+
+msgid "Two-factor authentication disabled."
+msgstr "ദ്വി-ഘടക പ്രാമാണീകരണം പ്രവർത്തനരഹിതമാക്കി."
+
+msgid "Invalid code — try again."
+msgstr "അസാധുവായ കോഡ് — വീണ്ടും ശ്രമിക്കുക."
+
+msgid "Invalid code."
+msgstr "അസാധുവായ കോഡ്."
+
+msgid "Setup expired — please retry."
+msgstr "സജ്ജീകരണം കാലഹരണപ്പെട്ടു — ദയവായി വീണ്ടും ശ്രമിക്കുക."
+
+msgid "Leave request submitted."
+msgstr "അവധി അപേക്ഷ സമർപ്പിച്ചു."
+
+msgid "All fields required."
+msgstr "എല്ലാ ഫീൽഡുകളും ആവശ്യമാണ്."
+
+msgid "No employee profile linked."
+msgstr "ജീവനക്കാരന്റെ പ്രൊഫൈൽ ലിങ്ക് ചെയ്തിട്ടില്ല."
+
+msgid "Already actioned."
+msgstr "ഇതിനകം നടപടി എടുത്തു."
+
+msgid "Invalid action."
+msgstr "അസാധുവായ നടപടി."
+
+msgid "Cannot cancel another user's leave."
+msgstr "മറ്റൊരാളുടെ അവധി റദ്ദാക്കാൻ കഴിയില്ല."
+
+msgid "Cannot cancel an actioned leave."
+msgstr "നടപടി എടുത്ത അവധി റദ്ദാക്കാൻ കഴിയില്ല."
+
+msgid "Leave cancelled."
+msgstr "അവധി റദ്ദാക്കി."
+
+msgid "[AEC HR] Leave request — %(name)s"
+msgstr "[AEC HR] അവധി അപേക്ഷ — %(name)s"
+
+msgid "[AEC HR] Leave %(status)s"
+msgstr "[AEC HR] അവധി %(status)s"
+
+msgid "Leave %(status)s."
+msgstr "അവധി %(status)s."

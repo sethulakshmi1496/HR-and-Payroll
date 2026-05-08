@@ -1,0 +1,13 @@
+{% extends 'email/base.html' %}
+{% block subject %}Welcome to AEC Group — Joining Letter{% endblock %}
+{% block body %}
+<h2 style="margin:0 0 12px;color:#0f172a;font-size:18px;">Welcome aboard, {{ profile.user.first_name }}!</h2>
+<p>Your documents have been verified and your profile is now active.</p>
+<p>Please find your official joining letter attached as a PDF.</p>
+<table cellpadding="6" style="margin:16px 0;border-collapse:collapse;width:100%;">
+  <tr><td style="background:#f8fafc;font-weight:bold;width:180px;">Employee ID</td><td>{{ profile.employee_id }}</td></tr>
+  <tr><td style="background:#f8fafc;font-weight:bold;">Department</td><td>{{ profile.department.name }}</td></tr>
+  <tr><td style="background:#f8fafc;font-weight:bold;">Date of Joining</td><td>{{ profile.date_of_joining }}</td></tr>
+</table>
+<p>If you have any questions, please reach out to the HR team.</p>
+{% endblock %}
