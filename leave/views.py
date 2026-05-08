@@ -108,8 +108,13 @@ class LeaveCreateView(LoginRequiredMixin, View):
         # Quota enforcement (probation: 2 half-days/month, permanent: 4)
         try:
             sd = datetime.strptime(start_date, '%Y-%m-%d').date()
+            ed = datetime.strptime(end_date, '%Y-%m-%d').date()
         except (ValueError, TypeError):
-            messages.error(request, _("Invalid start date."))
+            messages.error(request, _("Invalid date(s)."))
+            return redirect('leave:create')
+
+        if ed < sd:
+            messages.error(request, _("End date must be on/after start date."))
             return redirect('leave:create')
 
         # Sum already-used half-days in this calendar month (approved+pending)
@@ -121,10 +126,10 @@ class LeaveCreateView(LoginRequiredMixin, View):
         )
         used = sum((_half_day_count(l) for l in same_month), Decimal('0'))
 
-        # Provisional record for the new request to compute proposed usage.
+        # Provisional record (with parsed dates) to compute proposed usage.
         provisional = LeaveRequest(
             profile=profile, leave_type=leave_type,
-            start_date=start_date, end_date=end_date,
+            start_date=sd, end_date=ed,
         )
         proposed = used + _half_day_count(provisional)
         quota = _quota_for(profile)

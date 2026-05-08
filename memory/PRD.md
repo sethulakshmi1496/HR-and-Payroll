@@ -7,70 +7,94 @@ Build the AEC Group HR & Payroll Super App with:
 - Prompt 3 (Attendance): GPS geofence, face capture, Cinema skip, dashboard heatmap ✅
 - Prompt 4 (Payroll): basic/30 daily, OT, incentives, Kerala PT, ESI/PF, slip PDF ✅
 - P1+P2 enhancements (May 2026): qcluster + scheduler + leave + i18n + 2FA + doc-vault + live presence + HTML emails ✅
+- Prompt 5 (Leaves quota / Holidays / Discipline / Comm / Assets) ✅
 
 ## Tech stack
 - Django 5.2 (server-rendered Tailwind CDN templates)
 - SQLite, **Django Q2** (real worker via supervisor `qcluster`), ReportLab, Leaflet, Chart.js, face-api.js (CDN)
-- **django-otp** + **otp_totp** (TOTP) + **qrcode[pil]** (MD 2FA)
+- **django-otp** + **otp_totp** + **qrcode[pil]** (MD 2FA)
 - Auth: Django session-based (`/accounts/login/`)
 - Served via uvicorn ASGI (8001) + runserver shim (3000) for preview URL routing
-- i18n: English + Malayalam (`locale/ml/LC_MESSAGES/django.{po,mo}`)
+- i18n: English + Malayalam
 
-## User personas
-- **MD** — full power; **TOTP 2FA enforced**; only role allowed to add/delete incentives.
-- **HR** — generate/approve payroll, invite/verify candidates, approve leave, unlock/relock locked profiles for re-upload.
-- **Department Head** — review own dept (48-hour window), approve own dept's leave.
-- **Staff** — clock in/out, view own attendance/payslips, request/cancel own leave.
+## Implemented (Prompt 5 — May 2026 iteration_3)
+### Leave
+- **Quota enforcement** in `LeaveCreateView`: probation = 2 half-days/mo, permanent = 4 half-days/mo (HALF=1, FULL/SICK/EMERGENCY = 2 × duration_days). Server-side, both dates parsed before model instantiation.
+- **Calendar** at `/leave/calendar/` — month grid showing approved/pending leaves + active holidays.
+- **Approval-chain redirect** dropdown on each pending leave row — manager/HR/MD/DEPT_HEAD redirects to another approver while keeping status PENDING; appends note + AuditLog + emails the new approver.
 
-## Implemented (May 2026)
-### Foundation + Prompt 3 (Attendance) + Prompt 4 (Payroll) — see iteration_1 testing.
+### Holidays
+- **HR CRUD** at `/leave/holidays/` — list/add/toggle/delete. Source badge (Kerala public vs Custom).
+- **Auto-fetch** task `leave.tasks.holiday_fetch_kerala(year)` — seeds 15 Kerala public holidays for 2026 idempotently. Schedule `kerala-holiday-fetch-yearly` runs every Jan 1.
+- **Manual refetch** button on holidays page.
 
-### P1 Enhancements
-- **Real qcluster worker** — `/etc/supervisor/conf.d/qcluster.conf`. `Q_CLUSTER['sync']` is now config-driven (default False). 2 workers, ORM broker.
-- **28th-of-month auto-schedule** — `payroll/migrations/0001_register_schedule.py` registers `Schedule(name='payroll-monthly-28th', func='payroll.service.scheduled_monthly_generation', schedule_type=MONTHLY, next_run.day=28)`.
-- **HR Leave Requests** — new `leave/` app: list/create/decision/cancel views; templates with pending + history tables; data-testids for testing; HR/MD/DEPT_HEAD see all (DEPT_HEAD scoped to own dept).
-- **HTML email templates** — `twofa.emails.send_html_mail` helper + `templates/email/{base,leave_request,leave_decision,payroll_ready,onboarding_welcome}.html`. EmailMultiAlternatives multipart/alternative (text+html). Replaced plain-text emails in onboarding, payroll, leave flows.
+### Discipline
+- New `assets.DisciplineRecord` model (severity: WARN/HALF/FULL, deduction_days, attendance FK, is_active for revocation).
+- **Late escalation** in `attendance/signals._escalate_discipline()`:
+  - 1st late event → no record
+  - 2nd → `WARN` + HTML warning email to employee + dept head
+  - 3rd → `DEDUCT_HALF_DAY` (0.5 d cut)
+  - 4th+ → `DEDUCT_FULL_DAY` (1.0 d cut each)
+  - **Cinema dept exempt** (signal short-circuits on `is_cinema=True`)
+- **HR review page** `/assets/discipline/` with revoke/restore action.
+- **Payroll integration** — `payroll.service.PayrollService.get_discipline_deduction_days()` reads active records; subtracted from gross. Persisted to `Payroll.late_deduction_days` + `Payroll.other_deductions`.
 
-### P2 Enhancements
-- **Document vault unlock** — HR action at `/onboarding/hr/unlock/<pk>/`. New "Locked Profiles" section on HR verify page. AuditLog entries on unlock/relock.
-- **Malayalam i18n toggle** — `LANGUAGES=[en,ml]` + `LocaleMiddleware`. Language switcher (`/i18n/setlang/`) in nav. Translation file with 60+ strings (nav, leave, 2fa flows).
-- **MD-only TOTP 2FA** — `twofa/` app with `SetupView` (QR data URI + hex secret), `VerifyView`, `DisableView`, `EnforceMD2FAMiddleware` (exempts /static, /media, /accounts, /2fa, /admin, /i18n). Uses `django_otp.plugins.otp_totp.TOTPDevice`. Session flag `md_2fa_verified` cleared on logout. MD card on dashboard for setup.
-- **Real-time presence** — `/attendance/api/live/` JSON endpoint; dashboard polls every 30s for fresh heatmap + map markers (lighter than Channels websockets, no Redis dependency). Live timestamp shown.
+### Communications (Twilio stub)
+- `leave.tasks.birthday_sms()` — daily; sends SMS for staff with matching DOB.
+- `leave.tasks.anniversary_sms()` — daily; sends SMS for joining-date matches (≥1 yr).
+- Both schedules registered (`birthday-sms-daily`, `anniversary-sms-daily`) at 08:00.
+- Twilio `_twilio_send_sms_stub` logs to qcluster output (replace with `twilio.rest.Client` in prod).
 
-## Test results
-- **iteration_1**: 17/17 backend, frontend OK
-- **iteration_2** (P1+P2): 12/12 new tests pass; lint clean
+### Assets / NOC
+- New `assets/` app with **CompanyAsset** (PHONE/SIM/LAPTOP/ID_CARD/EQUIPMENT/OTHER + status + return tracking), **NOC** (template upload, signed upload, status flow DRAFT→ISSUED→SIGNED→CLOSED).
+- HR/MD: issue + return assets, issue NOCs.
+- Staff: view own assets + upload signed NOCs.
+- Aadhaar already stored as masked field on `EmployeeProfile.aadhaar_masked`.
+
+### Payroll work_days fix
+- `working_days_in_month(year, month, dept=None)` now uses `dept.get_work_days_list()` and subtracts active `Holiday` rows applicable to dept (or global). Cinema/Residency depts include Sundays.
+
+## Test summary
+- **iteration_1**: 17/17 PASS (foundation + Prompts 1-4)
+- **iteration_2**: 12/12 PASS (P1+P2 enhancements)
+- **iteration_3**: 21/21 PASS (Prompt 5 missing items)
+- All Python lint clean.
+
+## Routes (current)
+| Path | Purpose | Roles |
+|---|---|---|
+| `/accounts/login/` | Login | All |
+| `/dashboard/` | Tile menu | All authed |
+| `/onboarding/invite/` | Invite candidate | HR/MD |
+| `/onboarding/hr/verify/` | Verify candidates + unlock locked profiles | HR/MD |
+| `/attendance/clock/` | Clock in/out | All authed |
+| `/attendance/dashboard/` | Heatmap + history + live map | All authed |
+| `/attendance/api/live/` | JSON polling for live updates | HR/MD/DEPT_HEAD |
+| `/payroll/` | Payroll dashboard | All authed |
+| `/payroll/generate/` | Generate drafts | HR/MD |
+| `/payroll/approve/<pk>/` | Approve/finalize | HR/MD |
+| `/payroll/slip/<y>/<m>/` | Download payslip PDF | All authed |
+| `/payroll/tax/` | PT slabs + statutory | HR/MD |
+| `/payroll/incentive/{add,delete}/` | Manage incentives | MD only |
+| `/leave/` | Leave list + redirect dropdown | All authed |
+| `/leave/new/` | Create leave (quota enforced) | All authed |
+| `/leave/<pk>/decision/` | Approve/reject/redirect | HR/MD/DEPT_HEAD |
+| `/leave/<pk>/cancel/` | Cancel own pending | Self |
+| `/leave/calendar/` | Month grid w/ leaves + holidays | All authed |
+| `/leave/holidays/` | Kerala holidays CRUD | HR/MD |
+| `/leave/holidays/{add,fetch,<pk>/toggle,<pk>/delete}/` | Holiday actions | HR/MD |
+| `/assets/` | Assets dashboard | All authed |
+| `/assets/{issue,<pk>/return}/` | Issue/return asset | HR/MD |
+| `/assets/noc/{issue,<pk>/sign,<pk>/template}/` | NOC flow | HR/MD/Self |
+| `/assets/discipline/` | Discipline records | HR/MD |
+| `/assets/discipline/<pk>/revoke/` | Toggle active | HR/MD |
+| `/2fa/{setup,verify,disable}/` | TOTP 2FA | MD |
+| `/i18n/setlang/` | Language switch | All |
+| `/admin/` | Django admin | Staff |
 
 ## Backlog
-- P3: Replace Tailwind CDN with compiled CSS (cosmetic warning)
-- P3: Recovery codes for MD 2FA (otp_static plugin already in INSTALLED_APPS — wire UI)
-- P3: Async push notifications for leave decisions (currently email only)
-- P3: Department Head dashboard with own-dept attendance + leave KPIs
-- P3: Self-onboarding face-image library training (improve face-api.js match)
-
-## Routes summary
-| Path | Purpose | Roles |
-|------|---------|-------|
-| /accounts/login/ | Login | All |
-| /dashboard/ | Tile menu | All authed |
-| /onboarding/invite/ | Invite candidate | HR/MD |
-| /onboarding/hr/verify/ | Verify candidates + unlock locked profiles | HR/MD |
-| /onboarding/hr/unlock/<pk>/ | Toggle profile lock | HR/MD |
-| /attendance/clock/ | Clock in/out | All authed |
-| /attendance/dashboard/ | Heatmap + history + live map | All authed |
-| /attendance/api/live/ | JSON polling for live updates | HR/MD/DEPT_HEAD |
-| /payroll/ | Payroll dashboard | All authed |
-| /payroll/generate/ | Generate drafts | HR/MD |
-| /payroll/approve/<pk>/ | Approve/finalize | HR/MD |
-| /payroll/slip/<y>/<m>/ | Download payslip PDF | All authed |
-| /payroll/tax/ | PT slabs + statutory | HR/MD |
-| /payroll/incentive/add|delete/ | Manage incentives | MD only |
-| /leave/ | Leave list | All authed |
-| /leave/new/ | Create leave | All authed |
-| /leave/<pk>/decision/ | Approve/reject | HR/MD/DEPT_HEAD |
-| /leave/<pk>/cancel/ | Cancel own pending | Self |
-| /2fa/setup/ | TOTP setup | MD |
-| /2fa/verify/ | TOTP verify | MD |
-| /2fa/disable/ | Disable TOTP | MD |
-| /i18n/setlang/ | Language switch | All |
-| /admin/ | Django admin | Staff |
+- P3: Compile Tailwind into static CSS (replace CDN)
+- P3: Recovery codes for MD 2FA
+- P3: Native Twilio integration (replace stub)
+- P3: Real-time push notifications (channels)
+- P3: Expand Kerala holiday seed for 2027/2028
