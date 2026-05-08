@@ -17,6 +17,13 @@
     </a>
 </div>
 
+<div class="mb-6 flex gap-3 text-sm">
+    <a href="{% url 'leave:calendar' %}" class="text-blue-600 hover:underline" data-testid="link-calendar">📅 {% trans "Calendar" %}</a>
+    {% if is_manager %}
+    <a href="{% url 'leave:holidays' %}" class="text-blue-600 hover:underline" data-testid="link-holidays">🎉 {% trans "Holidays" %}</a>
+    {% endif %}
+</div>
+
 {% if messages %}
 <div class="mb-4">{% for m in messages %}<div class="mb-2 p-3 rounded-lg text-sm bg-blue-50 border border-blue-200 text-blue-800">{{ m }}</div>{% endfor %}</div>
 {% endif %}
@@ -49,6 +56,16 @@
                         <button name="action" value="approve" class="text-emerald-700 hover:underline text-xs" data-testid="leave-approve-{{ l.pk }}">{% trans "Approve" %}</button>
                         <button name="action" value="reject" class="ml-2 text-red-600 hover:underline text-xs" data-testid="leave-reject-{{ l.pk }}">{% trans "Reject" %}</button>
                     </form>
+                    {% if approvers %}
+                    <form method="post" action="{% url 'leave:decision' l.pk %}" class="inline ml-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="redirect">
+                        <select name="redirect_to" class="text-xs border border-slate-300 rounded px-1 py-0.5" onchange="if(this.value) this.form.submit()" data-testid="leave-redirect-{{ l.pk }}">
+                            <option value="">{% trans "Redirect to…" %}</option>
+                            {% for a in approvers %}<option value="{{ a.pk }}">{{ a.username }} ({{ a.role }})</option>{% endfor %}
+                        </select>
+                    </form>
+                    {% endif %}
                 </td>
             </tr>
             {% empty %}

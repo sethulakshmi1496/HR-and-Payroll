@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="21" time="4.341" timestamp="2026-05-08T16:28:32.391039+05:30" hostname="agent-env-489d41fa-fbc6-49f2-9560-ced4ced3827a"><testcase classname="backend.tests.test_iter3_assets_leave_discipline.TestHolidays" name="test_fetch_seeds_kerala_2026" time="0.010" /><testcase classname="backend.tests.test_iter3_assets_leave_discipline.TestHolidays" name="test_holidays_list_view" time="0.470" /><testcase classname="backend.tests.test_iter3_assets_leave_discipline.TestHolidays" name="test_holiday_add_toggle_delete" time="0.316" /><testcase classname="backend.tests.test_iter3_assets_leave_discipline.TestHolidays" name="test_holiday_fetch_view" time="0.302" /><testcase classname="backend.tests.test_iter3_assets_leave_discipline.TestWorkingDays" name="test_aug_2026_uses_holidays_and_workdays" time="0.006" /><testcase classname="backend.tests.test_iter3_assets_leave_discipline.TestLeaveQuota" name="test_half_day_count_helper" time="0.004" /><testcase classname="backend.tests.test_iter3_assets_leave_discipline.TestLeaveQuota" name="test_quota_for_permanent" time="0.004" /><testcase classname="backend.tests.test_iter3_assets_leave_discipline.TestLeaveQuota" name="test_quota_blocks_3day_sick" time="0.319"><failure message="TypeError: unsupported operand type(s) for -: 'str' and 'str'">backend/tests/test_iter3_assets_leave_discipline.py:150: in test_quota_blocks_3day_sick
+    r = hr_client.post('/leave/new/', {
+/root/.venv/lib/python3.11/site-packages/django/test/client.py:1156: in post
+    response = super().post(
+/root/.venv/lib/python3.11/site-packages/django/test/client.py:499: in post
+    return self.generic(
+/root/.venv/lib/python3.11/site-packages/django/test/client.py:671: in generic
+    return self.request(**r)
+           ^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/django/test/client.py:1090: in request
+    self.check_exception(response)
+/root/.venv/lib/python3.11/site-packages/django/test/client.py:805: in check_exception
+    raise exc_value
+/root/.venv/lib/python3.11/site-packages/django/core/handlers/exception.py:55: in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/django/core/handlers/base.py:197: in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/django/views/generic/base.py:105: in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/django/contrib/auth/mixins.py:73: in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/django/views/generic/base.py:144: in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+leave/views.py:129: in post
+    proposed = used + _half_day_count(provisional)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+leave/views.py:29: in _half_day_count
+    days = Decimal(leave.duration_days)
+                   ^^^^^^^^^^^^^^^^^^^
+core/models.py:366: in duration_days
+    return (self.end_date - self.start_date).days + 1
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: unsupported operand type(s) for -: 'str' and 'str'</failure></testcase><testcase classname="backend.tests.test_iter3_assets_leave_discipline.TestLeaveQuota" name="test_quota_progressive" time="0.313"><failure message="TypeError: unsupported operand type(s) for -: 'str' and 'str'">backend/tests/test_iter3_assets_leave_discipline.py:167: in test_quota_progressive
+    r = hr_client.post('/leave/new/', {
+/root/.venv/lib/python3.11/site-packages/django/test/client.py:1156: in post
+    response = super().post(
+/root/.venv/lib/python3.11/site-packages/django/test/client.py:499: in post
+    return self.generic(
+/root/.venv/lib/python3.11/site-packages/django/test/client.py:671: in generic
+    return self.request(**r)
+           ^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/django/test/client.py:1090: in request
+    self.check_exception(response)
+/root/.venv/lib/python3.11/site-packages/django/test/client.py:805: in check_exception
+    raise exc_value
+/root/.venv/lib/python3.11/site-packages/django/core/handlers/exception.py:55: in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/django/core/handlers/base.py:197: in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/django/views/generic/base.py:105: in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/django/contrib/auth/mixins.py:73: in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/django/views/generic/base.py:144: in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+leave/views.py:129: in post
+    proposed = used + _half_day_count(provisional)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+leave/views.py:29: in _half_day_count
+    days = Decimal(leave.duration_days)
+                   ^^^^^^^^^^^^^^^^^^^
+core/models.py:366: in duration_days
+    return (self.end_date - self.start_date).days + 1
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: unsupported operand type(s) for -: 'str' and 'str'</failure></testcase><testcase classname="backend.tests.test_iter3_assets_leave_discipline.TestDiscipline" name="test_escalation_2_to_5" time="0.085" /><testcase classname="backend.tests.test_iter3_assets_leave_discipline.TestDiscipline" name="test_payroll_uses_discipline" time="0.177" /><testcase classname="backend.tests.test_iter3_assets_leave_discipline.TestDiscipline" name="test_cinema_exempt" time="0.020" /><testcase classname="backend.tests.test_iter3_assets_leave_discipline.TestSmsStubs" name="test_birthday_sms_runs" time="0.002" /><testcase classname="backend.tests.test_iter3_assets_leave_discipline.TestSmsStubs" name="test_anniversary_sms_runs" time="0.002" /><testcase classname="backend.tests.test_iter3_assets_leave_discipline.TestLeaveRedirect" name="test_redirect_keeps_pending_and_logs" time="0.358" /><testcase classname="backend.tests.test_iter3_assets_leave_discipline.TestLeaveCalendar" name="test_calendar_renders_grid" time="0.306" /><testcase classname="backend.tests.test_iter3_assets_leave_discipline.TestAssets" name="test_dashboard_loads" time="0.305" /><testcase classname="backend.tests.test_iter3_assets_leave_discipline.TestAssets" name="test_issue_and_return" time="0.328" /><testcase classname="backend.tests.test_iter3_assets_leave_discipline.TestNOC" name="test_noc_issue_download_sign" time="0.327" /><testcase classname="backend.tests.test_iter3_assets_leave_discipline.TestDisciplinePage" name="test_discipline_list_and_revoke" time="0.319" /><testcase classname="backend.tests.test_iter3_assets_leave_discipline.TestSchedules" name="test_required_schedules_present" time="0.001" /></testsuite></testsuites>

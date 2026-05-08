@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'payroll',
     'leave',
     'twofa',
+    'assets',
 ]
 
 # django-q2 — real worker via supervisor (program:qcluster). sync=True only

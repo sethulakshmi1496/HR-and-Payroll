@@ -56,6 +56,15 @@
         <p class="text-sm text-slate-500 mt-1">Apply, approve & track leaves.</p>
     </a>
 
+    <a href="{% url 'assets:dashboard' %}" data-testid="card-assets"
+       class="block bg-white border border-slate-200 rounded-xl p-6 hover:shadow-md hover:border-blue-300 transition">
+        <div class="text-cyan-600 mb-3">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+        </div>
+        <h3 class="font-semibold text-slate-900">Assets & NOC</h3>
+        <p class="text-sm text-slate-500 mt-1">Phones, SIMs, equipment & NOC.</p>
+    </a>
+
     {% if request.user.role == 'MD' %}
     <a href="{% url 'twofa:setup' %}" data-testid="card-2fa"
        class="block bg-white border border-slate-200 rounded-xl p-6 hover:shadow-md hover:border-purple-300 transition">

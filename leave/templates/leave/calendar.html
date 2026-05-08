@@ -1,0 +1,48 @@
+{% extends 'onboarding/base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Leave Calendar" %}{% endblock %}
+
+{% block content %}
+<div class="flex items-end justify-between mb-6">
+    <div>
+        <h1 class="text-3xl font-bold text-slate-900">{% trans "Leave Calendar" %}</h1>
+        <p class="text-slate-500 mt-1">{% trans "Approved leaves + Kerala holidays for the month." %}</p>
+    </div>
+    <form method="get" class="flex gap-2">
+        <input type="number" name="month" min="1" max="12" value="{{ month }}" class="w-20 px-2 py-2 border border-slate-300 rounded-lg text-sm" data-testid="cal-month">
+        <input type="number" name="year" value="{{ year }}" class="w-24 px-2 py-2 border border-slate-300 rounded-lg text-sm">
+        <button class="px-4 py-2 bg-slate-900 text-white text-sm rounded-lg" data-testid="cal-go">Go</button>
+    </form>
+</div>
+
+<div class="grid grid-cols-7 gap-1 text-xs uppercase text-slate-500 mb-2 font-semibold tracking-wider">
+    <div class="p-2 text-center">Mon</div><div class="p-2 text-center">Tue</div>
+    <div class="p-2 text-center">Wed</div><div class="p-2 text-center">Thu</div>
+    <div class="p-2 text-center">Fri</div><div class="p-2 text-center">Sat</div>
+    <div class="p-2 text-center text-red-500">Sun</div>
+</div>
+
+<div class="grid grid-cols-7 gap-1" data-testid="leave-calendar-grid">
+    {% for _ in first_weekday_range %}<div></div>{% endfor %}
+    {% for c in day_cells %}
+    <div class="bg-white border border-slate-200 rounded-lg p-2 min-h-[88px]">
+        <div class="text-sm font-semibold text-slate-700 mb-1">{{ c.day }}</div>
+        <div class="space-y-0.5">
+            {% for h in c.holidays %}
+                <div class="bg-amber-100 text-amber-900 text-[10px] px-1.5 py-0.5 rounded truncate" title="{{ h.name }}">🎉 {{ h.name|truncatechars:14 }}</div>
+            {% endfor %}
+            {% for l in c.leaves %}
+                <div class="bg-blue-100 text-blue-900 text-[10px] px-1.5 py-0.5 rounded truncate" title="{{ l.profile.user.get_full_name }} - {{ l.get_leave_type_display }}">
+                    {% if is_manager %}{{ l.profile.user.first_name }}{% else %}{{ l.get_leave_type_display }}{% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="mt-6 flex gap-4 text-xs text-slate-600">
+    <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-amber-100 rounded"></span> {% trans "Holiday" %}</div>
+    <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-blue-100 rounded"></span> {% trans "Leave" %}</div>
+</div>
+{% endblock %}

@@ -69,15 +69,39 @@ def kerala_pt_for_basic(monthly_basic: Decimal, month_index: int) -> Decimal:
     return _q(KERALA_PT_SLABS[-1][1])
 
 
-def working_days_in_month(year: int, month: int) -> int:
-    """Excludes only Sundays (Mon-Sat default). Department-level overrides
-    (Cinema/Residency include Sundays) handled by attendance counting only."""
+def working_days_in_month(year: int, month: int, dept=None) -> int:
+    """
+    Returns count of working days for a given month according to the
+    department's work_days config. Department is optional — falls back
+    to Mon-Sat (excluding Sun) if not provided. Active Holidays for
+    the department further reduce the count.
+    """
     _, total = monthrange(year, month)
+    if dept is not None:
+        work_days = dept.get_work_days_list()
+    else:
+        work_days = [0, 1, 2, 3, 4, 5]  # Mon-Sat
     days = 0
     for day in range(1, total + 1):
-        if date(year, month, day).weekday() != 6:  # 6 = Sunday
+        if date(year, month, day).weekday() in work_days:
             days += 1
-    return days
+
+    # Subtract holidays (active, applicable to dept or all)
+    try:
+        from django.db.models import Q as _Q
+        from core.models import Holiday
+        hol_qs = Holiday.objects.filter(
+            is_active=True,
+            date__year=year, date__month=month,
+        )
+        if dept is not None:
+            hol_qs = hol_qs.filter(
+                _Q(departments=dept) | _Q(departments__isnull=True)
+            ).distinct()
+        days -= hol_qs.count()
+    except Exception:
+        pass
+    return max(0, days)
 
 
 class PayrollService:
@@ -127,17 +151,38 @@ class PayrollService:
         )
         return _q(sum((i.amount for i in agg), Decimal('0')))
 
+    def get_discipline_deduction_days(self) -> Decimal:
+        """Sum of active DisciplineRecord.deduction_days for this profile/month."""
+        try:
+            from assets.models import DisciplineRecord
+            agg = DisciplineRecord.objects.filter(
+                profile=self.profile,
+                is_active=True,
+                occurred_on__year=self.year,
+                occurred_on__month=self.month,
+            )
+            total = sum((r.deduction_days for r in agg), Decimal('0'))
+            return _q(total)
+        except Exception:
+            return Decimal('0')
+
     # ---------- Calculations ----------
     def compute(self) -> dict:
-        working_days = working_days_in_month(self.year, self.month)
+        working_days = working_days_in_month(self.year, self.month, self.profile.department)
         days_present = self.get_days_present()
         days_absent = max(0, working_days - days_present)
         ot_hours = self.get_ot_hours()
         ot_amount = _q(ot_hours * OT_MULTIPLIER * self.daily)
         incentive_total = self.get_incentive_total()
 
+        # Late-attendance discipline deduction (in days), converted to ₹
+        discipline_days = self.get_discipline_deduction_days()
+        discipline_amount = _q(discipline_days * self.daily)
+
         earned_basic = _q(self.daily * Decimal(days_present))
-        gross = _q(earned_basic + ot_amount + incentive_total)
+        gross = _q(earned_basic + ot_amount + incentive_total - discipline_amount)
+        if gross < Decimal('0'):
+            gross = Decimal('0.00')
 
         # Deductions
         pt_ded = kerala_pt_for_basic(self.basic, self.month)
@@ -163,6 +208,8 @@ class PayrollService:
             'ot_hours': ot_hours,
             'ot_amount': ot_amount,
             'incentive_total': incentive_total,
+            'discipline_days': discipline_days,
+            'discipline_amount': discipline_amount,
             'gross_salary': gross,
             'pt_deduction': pt_ded,
             'esi_deduction': esi_ded,
@@ -189,12 +236,18 @@ def generate_for_profile(profile: EmployeeProfile, year: int, month: int) -> Pay
     obj.working_days = data['working_days']
     obj.days_present = data['days_present']
     obj.days_absent = data['days_absent']
+    obj.late_deduction_days = data['discipline_days']
     obj.ot_hours = data['ot_hours']
     obj.ot_amount = data['ot_amount']
     obj.incentive_total = data['incentive_total']
     obj.pt_deduction = data['pt_deduction']
     obj.esi_deduction = data['esi_deduction']
     obj.pf_deduction = data['pf_deduction']
+    obj.other_deductions = data['discipline_amount']
+    obj.deduction_notes = (
+        f"Late discipline: {data['discipline_days']} day(s) = ₹{data['discipline_amount']}"
+        if data['discipline_days'] else ""
+    )
     obj.gross_salary = data['gross_salary']
     obj.total_deductions = data['total_deductions']
     obj.net_salary = data['net_salary']

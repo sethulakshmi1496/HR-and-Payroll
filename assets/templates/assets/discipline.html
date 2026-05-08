@@ -1,0 +1,58 @@
+{% extends 'onboarding/base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Discipline Records" %} - AEC Group{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-3xl font-bold text-slate-900">{% trans "Discipline Records" %}</h1>
+    <p class="text-slate-500 mt-1">{% trans "Auto-generated late-attendance escalations. HR can revoke a record to skip its payroll deduction." %}</p>
+</div>
+
+{% if messages %}<div class="mb-4">{% for m in messages %}<div class="mb-2 p-3 rounded-lg text-sm bg-blue-50 border border-blue-200 text-blue-800">{{ m }}</div>{% endfor %}</div>{% endif %}
+
+<div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+    <table class="w-full text-sm" data-testid="discipline-table">
+        <thead class="bg-slate-50 text-xs font-semibold text-slate-500 uppercase">
+            <tr>
+                <th class="p-3 text-left">{% trans "Date" %}</th>
+                <th class="p-3 text-left">{% trans "Employee" %}</th>
+                <th class="p-3 text-left">{% trans "Department" %}</th>
+                <th class="p-3 text-left">{% trans "Reason" %}</th>
+                <th class="p-3 text-left">{% trans "Severity" %}</th>
+                <th class="p-3 text-right">{% trans "Cut (days)" %}</th>
+                <th class="p-3 text-left">{% trans "Status" %}</th>
+                <th class="p-3 text-right">{% trans "Action" %}</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for r in records %}
+            <tr {% if not r.is_active %}class="opacity-50"{% endif %}>
+                <td class="p-3">{{ r.occurred_on }}</td>
+                <td class="p-3"><div class="font-medium">{{ r.profile.user.get_full_name }}</div><div class="text-xs text-slate-500">{{ r.profile.employee_id }}</div></td>
+                <td class="p-3">{{ r.profile.department.code }}</td>
+                <td class="p-3">{{ r.get_reason_display }}</td>
+                <td class="p-3">
+                    {% if r.severity == 'WARN' %}<span class="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">{% trans "Warning" %}</span>
+                    {% elif r.severity == 'HALF' %}<span class="px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-800">{% trans "0.5d cut" %}</span>
+                    {% elif r.severity == 'FULL' %}<span class="px-2 py-0.5 rounded text-xs bg-red-100 text-red-800">{% trans "1.0d cut" %}</span>{% endif %}
+                </td>
+                <td class="p-3 text-right font-mono">{{ r.deduction_days }}</td>
+                <td class="p-3">
+                    {% if r.is_active %}<span class="text-xs text-emerald-700">{% trans "Active" %}</span>
+                    {% else %}<span class="text-xs text-slate-400">{% trans "Revoked" %}</span>{% endif %}
+                </td>
+                <td class="p-3 text-right">
+                    <form method="post" action="{% url 'assets:discipline_revoke' r.pk %}" class="inline">{% csrf_token %}
+                        <button class="text-xs hover:underline {% if r.is_active %}text-red-600{% else %}text-emerald-700{% endif %}" data-testid="discipline-toggle-{{ r.pk }}">
+                            {% if r.is_active %}{% trans "Revoke" %}{% else %}{% trans "Restore" %}{% endif %}
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="p-8 text-center text-slate-500">{% trans "No discipline records." %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

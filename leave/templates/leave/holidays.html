@@ -1,0 +1,66 @@
+{% extends 'onboarding/base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Holidays" %}{% endblock %}
+
+{% block content %}
+<div class="flex items-end justify-between mb-6">
+    <div>
+        <h1 class="text-3xl font-bold text-slate-900">{% trans "Kerala Holidays" %} — {{ year }}</h1>
+        <p class="text-slate-500 mt-1">{% trans "Auto-fetched + HR custom additions. Deactivate any holiday to skip it for payroll working-days calc." %}</p>
+    </div>
+    <form method="post" action="{% url 'leave:holiday_fetch' %}" class="inline">{% csrf_token %}
+        <input type="hidden" name="year" value="{{ year }}">
+        <button class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700" data-testid="holidays-fetch-btn">{% trans "Refetch Kerala" %} {{ year }}</button>
+    </form>
+</div>
+
+{% if messages %}<div class="mb-4">{% for m in messages %}<div class="mb-2 p-3 rounded-lg text-sm bg-blue-50 border border-blue-200 text-blue-800">{{ m }}</div>{% endfor %}</div>{% endif %}
+
+<div class="bg-white rounded-xl border border-slate-200 p-6 mb-6">
+    <h3 class="font-semibold mb-3">{% trans "Add custom holiday" %}</h3>
+    <form method="post" action="{% url 'leave:holiday_add' %}" class="flex flex-wrap gap-3" data-testid="holiday-add-form">
+        {% csrf_token %}
+        <input type="text" name="name" placeholder="{% trans 'Name' %}" required class="px-3 py-2 border border-slate-300 rounded-lg text-sm">
+        <input type="date" name="date" required class="px-3 py-2 border border-slate-300 rounded-lg text-sm">
+        <button class="px-4 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700" data-testid="holiday-add-submit">{% trans "Add" %}</button>
+    </form>
+</div>
+
+<div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+    <table class="w-full text-sm" data-testid="holidays-table">
+        <thead class="bg-slate-50 text-xs font-semibold text-slate-500 uppercase">
+            <tr>
+                <th class="p-3 text-left">{% trans "Date" %}</th>
+                <th class="p-3 text-left">{% trans "Name" %}</th>
+                <th class="p-3 text-left">{% trans "Source" %}</th>
+                <th class="p-3 text-left">{% trans "Status" %}</th>
+                <th class="p-3 text-right">{% trans "Action" %}</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for h in holidays %}
+            <tr {% if not h.is_active %}class="opacity-50"{% endif %}>
+                <td class="p-3 font-mono">{{ h.date }}</td>
+                <td class="p-3 font-medium">{{ h.name }}</td>
+                <td class="p-3"><span class="px-2 py-0.5 rounded text-xs {% if h.is_public %}bg-blue-100 text-blue-800{% else %}bg-slate-100 text-slate-700{% endif %}">{% if h.is_public %}Kerala public{% else %}Custom{% endif %}</span></td>
+                <td class="p-3">
+                    {% if h.is_active %}<span class="px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-800">{% trans "Active" %}</span>
+                    {% else %}<span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-500">{% trans "Inactive" %}</span>{% endif %}
+                </td>
+                <td class="p-3 text-right whitespace-nowrap">
+                    <form method="post" action="{% url 'leave:holiday_toggle' h.pk %}" class="inline">{% csrf_token %}
+                        <button class="text-blue-600 hover:underline text-xs" data-testid="holiday-toggle-{{ h.pk }}">{% if h.is_active %}{% trans "Disable" %}{% else %}{% trans "Enable" %}{% endif %}</button>
+                    </form>
+                    <form method="post" action="{% url 'leave:holiday_delete' h.pk %}" class="inline ml-2"
+                          onsubmit="return confirm('Delete this holiday?')">{% csrf_token %}
+                        <button class="text-red-600 hover:underline text-xs" data-testid="holiday-delete-{{ h.pk }}">{% trans "Delete" %}</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="p-6 text-center text-slate-500">{% trans "No holidays for this year." %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

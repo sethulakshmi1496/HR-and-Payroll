@@ -25,6 +25,7 @@ urlpatterns = [
     path('payroll/', include('payroll.urls')),
     path('leave/', include('leave.urls')),
     path('2fa/', include('twofa.urls')),
+    path('assets/', include('assets.urls')),
 ]
 
 if settings.DEBUG:
