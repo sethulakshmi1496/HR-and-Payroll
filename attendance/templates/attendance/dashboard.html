@@ -1,0 +1,131 @@
+{% extends 'onboarding/base.html' %}
+
+{% block title %}Attendance Dashboard - AEC Group{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<div class="mb-8 flex flex-wrap items-end justify-between gap-4">
+    <div>
+        <h1 class="text-3xl font-bold text-slate-900">Attendance Dashboard</h1>
+        <p class="text-slate-500 text-sm mt-1">{% if is_manager %}Today's attendance across all departments.{% else %}Your recent attendance history.{% endif %}</p>
+    </div>
+    <a href="{% url 'attendance:clock' %}" class="px-5 py-2.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700" data-testid="goto-clock">
+        Clock In / Out →
+    </a>
+</div>
+
+{% if is_manager %}
+<!-- Department Heatmap -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-5" data-testid="heatmap-card">
+        <h3 class="font-semibold text-slate-900 mb-4">Today — Department Presence</h3>
+        <canvas id="heatmapChart" height="120"></canvas>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-5 border-b border-slate-100">
+            <h3 class="font-semibold text-slate-900">Live Locations</h3>
+        </div>
+        <div id="dashboard-map" class="h-72 w-full z-0"></div>
+    </div>
+</div>
+{% endif %}
+
+<!-- History Table -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse" data-testid="attendance-table">
+            <thead>
+                <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    {% if is_manager %}<th class="p-4">Employee</th>{% endif %}
+                    <th class="p-4">Date</th>
+                    <th class="p-4">In</th>
+                    <th class="p-4">Out</th>
+                    <th class="p-4">Source</th>
+                    <th class="p-4">Status</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-sm">
+                {% for record in attendances %}
+                <tr class="hover:bg-slate-50">
+                    {% if is_manager %}
+                    <td class="p-4 font-medium text-slate-900">{{ record.profile.user.get_full_name }} <span class="text-xs text-slate-500 block">{{ record.profile.department.code }}</span></td>
+                    {% endif %}
+                    <td class="p-4 text-slate-700">{{ record.date }}</td>
+                    <td class="p-4 text-slate-700">{{ record.in_time|time:"H:i"|default:"-" }}</td>
+                    <td class="p-4 text-slate-700">{{ record.out_time|time:"H:i"|default:"-" }}</td>
+                    <td class="p-4 text-slate-500 text-xs">{{ record.get_source_display }}</td>
+                    <td class="p-4">
+                        {% if record.is_valid %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Valid</span>
+                        {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Invalid</span>
+                        {% endif %}
+                        {% if record.is_late %}
+                            <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Late ({{ record.late_minutes }}m)</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="p-8 text-center text-slate-500">No attendance records found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if is_manager %}
+<script>
+(function() {
+    // Department heatmap (presence ratio)
+    const labels = {{ heatmap_labels|safe }};
+    const presentData = {{ heatmap_present|safe }};
+    const totalData = {{ heatmap_total|safe }};
+    const ratios = presentData.map((p, i) => totalData[i] ? Math.round(p * 100 / totalData[i]) : 0);
+    const colors = ratios.map(r => r >= 80 ? '#10b981' : r >= 50 ? '#f59e0b' : '#ef4444');
+
+    new Chart(document.getElementById('heatmapChart'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Presence %',
+                data: ratios,
+                backgroundColor: colors,
+                borderRadius: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            const i = ctx.dataIndex;
+                            return `${presentData[i]}/${totalData[i]} present (${ratios[i]}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Live locations map
+    const map = L.map('dashboard-map').setView([9.931233, 76.267303], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    {% for record in attendances %}
+        {% if record.gps_latitude and record.gps_longitude %}
+            L.marker([{{ record.gps_latitude }}, {{ record.gps_longitude }}])
+                .bindPopup("<b>{{ record.profile.user.get_full_name }}</b><br>In: {{ record.in_time|time:'H:i' }}")
+                .addTo(map);
+        {% endif %}
+    {% endfor %}
+})();
+</script>
+{% endif %}
+{% endblock %}

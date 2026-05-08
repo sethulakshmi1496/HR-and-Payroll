@@ -1,0 +1,76 @@
+{% extends 'onboarding/base.html' %}
+
+{% block title %}Complete Onboarding - AEC Group{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="bg-blue-600 px-8 py-6">
+        <h2 class="text-2xl font-bold text-white">Welcome to AEC Group</h2>
+        <p class="text-blue-100 text-sm mt-1">Please complete your profile for the {{ invite.department.name }} department.</p>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="p-8 space-y-8">
+        {% csrf_token %}
+        
+        <!-- Section 1: Personal Details -->
+        <div>
+            <h3 class="text-lg font-semibold text-slate-900 border-b border-slate-200 pb-2 mb-4">Personal Details</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">First Name</label>
+                    {{ form.first_name }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">Last Name</label>
+                    {{ form.last_name }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">Phone</label>
+                    {{ form.phone }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">Aadhaar Number</label>
+                    {{ form.aadhaar }}
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-slate-700">Personal Bank Account (Probation Salary)</label>
+                    {{ form.personal_account }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Document Vault -->
+        <div>
+            <h3 class="text-lg font-semibold text-slate-900 border-b border-slate-200 pb-2 mb-4">Document Vault</h3>
+            <div class="grid grid-cols-1 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">Profile Picture *</label>
+                    {{ form.profile_pic }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">ID Proof (Aadhaar/PAN) *</label>
+                    {{ form.id_proof }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">Highest Academic Certificate *</label>
+                    {{ form.academic_doc }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">Experience Letter (Optional)</label>
+                    {{ form.exp_letter }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">Previous Salary Slips (Optional)</label>
+                    {{ form.salary_slips }}
+                </div>
+            </div>
+        </div>
+
+        <div class="pt-4 border-t border-slate-200 flex justify-end">
+            <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-all">
+                Submit Profile for Review
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

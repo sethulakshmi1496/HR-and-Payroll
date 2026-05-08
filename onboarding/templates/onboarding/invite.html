@@ -1,0 +1,35 @@
+{% extends 'onboarding/base.html' %}
+
+{% block title %}HR Invite - AEC Group{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+    <div class="mb-8">
+        <h2 class="text-2xl font-bold text-slate-900">Invite Candidate</h2>
+        <p class="text-slate-500 text-sm mt-1">Generate a secure 7-day onboarding link.</p>
+    </div>
+
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+        <div>
+            <label class="block text-sm font-medium text-slate-700">Email Address</label>
+            {{ form.email }}
+            {% if form.email.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ form.email.errors.0 }}</p>
+            {% endif %}
+        </div>
+        
+        <div>
+            <label class="block text-sm font-medium text-slate-700">Department</label>
+            {{ form.department }}
+            {% if form.department.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ form.department.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <button type="submit" class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+            Generate & Send Invite
+        </button>
+    </form>
+</div>
+{% endblock %}

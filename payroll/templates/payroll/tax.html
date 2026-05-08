@@ -1,0 +1,74 @@
+{% extends 'onboarding/base.html' %}
+
+{% block title %}Tax & Statutory - AEC Group{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-slate-900">Tax & Statutory</h1>
+    <p class="text-slate-500 mt-1">Kerala Professional Tax slabs, ESI/PF deductions and municipal/building/stationery tracking.</p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    <div class="bg-white rounded-xl border border-slate-200 p-5" data-testid="card-pt">
+        <p class="text-xs uppercase tracking-wider text-slate-500">Total PT (last 50)</p>
+        <p class="text-2xl font-bold text-slate-900 mt-1">₹{{ total_pt }}</p>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-5" data-testid="card-esi">
+        <p class="text-xs uppercase tracking-wider text-slate-500">Total ESI (last 50)</p>
+        <p class="text-2xl font-bold text-slate-900 mt-1">₹{{ total_esi }}</p>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-5" data-testid="card-pf">
+        <p class="text-xs uppercase tracking-wider text-slate-500">Total PF (last 50)</p>
+        <p class="text-2xl font-bold text-slate-900 mt-1">₹{{ total_pf }}</p>
+    </div>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+    <div class="px-5 py-4 border-b border-slate-100">
+        <h3 class="font-semibold text-slate-900">Kerala Professional Tax — Half-Yearly Slabs</h3>
+        <p class="text-xs text-slate-500 mt-1">Deducted in February (Oct-Mar) and August (Apr-Sep).</p>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <tr>
+                    <th class="p-3 text-left">Half-Yearly Income (₹)</th>
+                    <th class="p-3 text-right">PT (₹)</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100" data-testid="pt-slabs-table">
+                {% for ceiling, tax in kerala_pt_slabs %}
+                <tr><td class="p-3">Up to ₹{{ ceiling }}</td><td class="p-3 text-right font-medium">₹{{ tax }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <h3 class="font-semibold text-slate-900 mb-3">Municipal Tax</h3>
+        <ul class="text-sm text-slate-600 space-y-2 list-disc list-inside">
+            <li>Building tax — paid to KMC half-yearly</li>
+            <li>Trade license — Apr & Oct</li>
+            <li>Property tax — Annual (based on PRR)</li>
+        </ul>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <h3 class="font-semibold text-slate-900 mb-3">Building Maintenance</h3>
+        <ul class="text-sm text-slate-600 space-y-2 list-disc list-inside">
+            <li>AMC — generators, lifts, cinema HVAC</li>
+            <li>Insurance — fire, theft, public liability</li>
+            <li>Power & utilities consolidated billing</li>
+        </ul>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <h3 class="font-semibold text-slate-900 mb-3">Stationery</h3>
+        <ul class="text-sm text-slate-600 space-y-2 list-disc list-inside">
+            <li>Office supplies — monthly recurring</li>
+            <li>Printing — letterheads, payslip stationery</li>
+            <li>Branded merchandise — quarterly bulk</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
