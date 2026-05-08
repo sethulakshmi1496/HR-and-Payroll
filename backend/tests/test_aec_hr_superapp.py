@@ -86,10 +86,11 @@ class TestAttendance:
         assert "leaflet" in body or "map" in body
         assert "video" in body or "face" in body or "webcam" in body
 
-    def test_attendance_dashboard_manager(self, md_session):
-        r = md_session.get(f"{BASE_URL}/attendance/dashboard/", timeout=20)
+    def test_attendance_dashboard_manager(self, hr_session):
+        # Use HR (no 2FA) — MD now goes through TOTP middleware
+        r = hr_session.get(f"{BASE_URL}/attendance/dashboard/", timeout=20)
         assert r.status_code == 200
-        # MD view should include heatmap + leaflet bits
+        # Manager view should include heatmap + leaflet bits
         assert "chart" in r.text.lower() or "heatmap" in r.text.lower()
 
 

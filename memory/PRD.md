@@ -2,68 +2,75 @@
 
 ## Original problem statement
 Build the AEC Group HR & Payroll Super App with:
-- Prompt 1 (Foundation): Departments, Profiles, Incentives, RBAC ✅ (pre-existing)
-- Prompt 2 (Onboarding): Invite/Verify/PDF flow ✅ (pre-existing)
-- Prompt 3 (Attendance): GPS geofence, face capture, Cinema skip, dashboard heatmap
-- Prompt 4 (Payroll): basic/30 daily, OT, incentives, Kerala PT slabs, ESI/PF, slip PDF
+- Prompt 1 (Foundation): Departments, Profiles, Incentives, RBAC ✅
+- Prompt 2 (Onboarding): Invite/Verify/PDF flow ✅
+- Prompt 3 (Attendance): GPS geofence, face capture, Cinema skip, dashboard heatmap ✅
+- Prompt 4 (Payroll): basic/30 daily, OT, incentives, Kerala PT, ESI/PF, slip PDF ✅
+- P1+P2 enhancements (May 2026): qcluster + scheduler + leave + i18n + 2FA + doc-vault + live presence + HTML emails ✅
 
 ## Tech stack
-- Django 5.2 (server-rendered templates + Tailwind via CDN)
-- SQLite, Django Q2 (sync mode), ReportLab, Leaflet, Chart.js, face-api.js (CDN)
+- Django 5.2 (server-rendered Tailwind CDN templates)
+- SQLite, **Django Q2** (real worker via supervisor `qcluster`), ReportLab, Leaflet, Chart.js, face-api.js (CDN)
+- **django-otp** + **otp_totp** (TOTP) + **qrcode[pil]** (MD 2FA)
 - Auth: Django session-based (`/accounts/login/`)
-- Served via uvicorn ASGI (8001) + runserver (3000) for preview URL routing
+- Served via uvicorn ASGI (8001) + runserver shim (3000) for preview URL routing
+- i18n: English + Malayalam (`locale/ml/LC_MESSAGES/django.{po,mo}`)
 
 ## User personas
-- **MD** — full power, only one allowed to add/delete incentives.
-- **HR** — generate/approve payroll, invite/verify candidates, dashboard.
-- **Department Head** — review own dept (48-hour window).
-- **Staff** — clock in/out, view own attendance & payslips.
+- **MD** — full power; **TOTP 2FA enforced**; only role allowed to add/delete incentives.
+- **HR** — generate/approve payroll, invite/verify candidates, approve leave, unlock/relock locked profiles for re-upload.
+- **Department Head** — review own dept (48-hour window), approve own dept's leave.
+- **Staff** — clock in/out, view own attendance/payslips, request/cancel own leave.
 
 ## Implemented (May 2026)
-### Prompt 3 — Attendance (verified existing + added)
-- ClockInOutView (GPS + base64 face image + IP fallback) ✅
-- Haversine geofence (100m, configurable) ✅
-- Cinema dept skip in late-flag signal ✅
-- **NEW**: timezone-aware late check (was buggy — comparing UTC to local 9 AM)
-- **NEW**: dispatch via django-q2 async_task (sync in dev)
-- **NEW**: Chart.js heatmap (dept presence %) on dashboard
-- Leaflet live map ✅
-- Templates extend `onboarding/base.html` ✅
+### Foundation + Prompt 3 (Attendance) + Prompt 4 (Payroll) — see iteration_1 testing.
 
-### Prompt 4 — Payroll (built from scratch)
-- `payroll.service.PayrollService` — pure compute
-  - daily = basic / 30 (fixed)
-  - gross = days_present × daily + OT × 2 × daily + incentives
-  - PT (Kerala half-yearly), ESI 0.75% if gross<21k, PF 12% capped at ₹15k basic
-- `generate_for_profile()` / `generate_for_month()` — idempotent persistence
-- `scheduled_monthly_generation()` — django-q2 hook (28th of month)
-- `payroll.pdf.build_payslip_pdf()` — ReportLab structured slip
-- `PayrollDashboardView` — month selector, table, history Chart.js, MD-only incentive editor
-- `GenerateView` — bulk/single, console-email heads
-- `ApproveView` — approve & finalize states
-- `SlipView` — staff own / HR-MD any
-- `TaxPageView` — PT slab table, ESI/PF totals, municipal/building/stationery
-- IncentiveAdd / IncentiveDelete (MD only)
+### P1 Enhancements
+- **Real qcluster worker** — `/etc/supervisor/conf.d/qcluster.conf`. `Q_CLUSTER['sync']` is now config-driven (default False). 2 workers, ORM broker.
+- **28th-of-month auto-schedule** — `payroll/migrations/0001_register_schedule.py` registers `Schedule(name='payroll-monthly-28th', func='payroll.service.scheduled_monthly_generation', schedule_type=MONTHLY, next_run.day=28)`.
+- **HR Leave Requests** — new `leave/` app: list/create/decision/cancel views; templates with pending + history tables; data-testids for testing; HR/MD/DEPT_HEAD see all (DEPT_HEAD scoped to own dept).
+- **HTML email templates** — `twofa.emails.send_html_mail` helper + `templates/email/{base,leave_request,leave_decision,payroll_ready,onboarding_welcome}.html`. EmailMultiAlternatives multipart/alternative (text+html). Replaced plain-text emails in onboarding, payroll, leave flows.
 
-### Cross-cutting
-- `/accounts/login/` Django built-in LoginView + custom Tailwind template
-- `/dashboard/` tile menu home
-- CSRF_TRUSTED_ORIGINS for Emergent preview URLs
-- Frontend supervisor slot now runs `manage.py runserver 0.0.0.0:3000`
+### P2 Enhancements
+- **Document vault unlock** — HR action at `/onboarding/hr/unlock/<pk>/`. New "Locked Profiles" section on HR verify page. AuditLog entries on unlock/relock.
+- **Malayalam i18n toggle** — `LANGUAGES=[en,ml]` + `LocaleMiddleware`. Language switcher (`/i18n/setlang/`) in nav. Translation file with 60+ strings (nav, leave, 2fa flows).
+- **MD-only TOTP 2FA** — `twofa/` app with `SetupView` (QR data URI + hex secret), `VerifyView`, `DisableView`, `EnforceMD2FAMiddleware` (exempts /static, /media, /accounts, /2fa, /admin, /i18n). Uses `django_otp.plugins.otp_totp.TOTPDevice`. Session flag `md_2fa_verified` cleared on logout. MD card on dashboard for setup.
+- **Real-time presence** — `/attendance/api/live/` JSON endpoint; dashboard polls every 30s for fresh heatmap + map markers (lighter than Channels websockets, no Redis dependency). Live timestamp shown.
 
-## Backlog / Not implemented
-- P1: HTML email templates (currently plain text via console backend)
-- P1: Replace `Q_CLUSTER['sync']=True` with real worker (`python manage.py qcluster`)
-- P1: 28th-of-month scheduled task auto-registration
-- P2: HR view of pending leave requests
-- P2: Document vault re-upload (currently locked after verification)
-- P2: Multi-language UI (Malayalam toggle)
-- P2: Real-time presence websocket
-- P2: Two-factor auth for MD
+## Test results
+- **iteration_1**: 17/17 backend, frontend OK
+- **iteration_2** (P1+P2): 12/12 new tests pass; lint clean
 
-## Test flows
-1. Login as MD/HR → /dashboard/ tiles
-2. Generate payroll → status flips to HEAD_REVIEW → approve → finalize
-3. Download payslip PDF (200 + valid PDF magic bytes)
-4. PT calc spot-check: ₹30k basic in Aug → ₹1250 ✓ (matches spec)
-5. Cinema dept never sets is_late=True (signal early-return)
+## Backlog
+- P3: Replace Tailwind CDN with compiled CSS (cosmetic warning)
+- P3: Recovery codes for MD 2FA (otp_static plugin already in INSTALLED_APPS — wire UI)
+- P3: Async push notifications for leave decisions (currently email only)
+- P3: Department Head dashboard with own-dept attendance + leave KPIs
+- P3: Self-onboarding face-image library training (improve face-api.js match)
+
+## Routes summary
+| Path | Purpose | Roles |
+|------|---------|-------|
+| /accounts/login/ | Login | All |
+| /dashboard/ | Tile menu | All authed |
+| /onboarding/invite/ | Invite candidate | HR/MD |
+| /onboarding/hr/verify/ | Verify candidates + unlock locked profiles | HR/MD |
+| /onboarding/hr/unlock/<pk>/ | Toggle profile lock | HR/MD |
+| /attendance/clock/ | Clock in/out | All authed |
+| /attendance/dashboard/ | Heatmap + history + live map | All authed |
+| /attendance/api/live/ | JSON polling for live updates | HR/MD/DEPT_HEAD |
+| /payroll/ | Payroll dashboard | All authed |
+| /payroll/generate/ | Generate drafts | HR/MD |
+| /payroll/approve/<pk>/ | Approve/finalize | HR/MD |
+| /payroll/slip/<y>/<m>/ | Download payslip PDF | All authed |
+| /payroll/tax/ | PT slabs + statutory | HR/MD |
+| /payroll/incentive/add|delete/ | Manage incentives | MD only |
+| /leave/ | Leave list | All authed |
+| /leave/new/ | Create leave | All authed |
+| /leave/<pk>/decision/ | Approve/reject | HR/MD/DEPT_HEAD |
+| /leave/<pk>/cancel/ | Cancel own pending | Self |
+| /2fa/setup/ | TOTP setup | MD |
+| /2fa/verify/ | TOTP verify | MD |
+| /2fa/disable/ | Disable TOTP | MD |
+| /i18n/setlang/ | Language switch | All |
+| /admin/ | Django admin | Staff |
