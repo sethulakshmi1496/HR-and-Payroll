@@ -1,0 +1,35 @@
+{% extends 'onboarding/base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Request Leave" %} - AEC Group{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto bg-white rounded-xl border border-slate-200 p-8">
+    <h1 class="text-2xl font-bold text-slate-900 mb-2">{% trans "Request Leave" %}</h1>
+    <p class="text-slate-500 text-sm mb-6">{% trans "Probation: 1/month. Permanent: 2/month." %}</p>
+
+    <form method="post" class="space-y-5" data-testid="leave-create-form">
+        {% csrf_token %}
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">{% trans "Type" %}</label>
+            <select name="leave_type" required class="w-full px-3 py-2 border border-slate-300 rounded-lg" data-testid="leave-type">
+                {% for v, l in leave_types %}<option value="{{ v }}">{{ l }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">{% trans "From" %}</label>
+                <input type="date" name="start_date" required class="w-full px-3 py-2 border border-slate-300 rounded-lg" data-testid="leave-start">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">{% trans "To" %}</label>
+                <input type="date" name="end_date" required class="w-full px-3 py-2 border border-slate-300 rounded-lg" data-testid="leave-end">
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">{% trans "Reason" %}</label>
+            <textarea name="reason" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-lg" data-testid="leave-reason"></textarea>
+        </div>
+        <button type="submit" class="w-full py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700" data-testid="leave-submit">{% trans "Submit Request" %}</button>
+    </form>
+</div>
+{% endblock %}

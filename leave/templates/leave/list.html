@@ -1,0 +1,102 @@
+{% extends 'onboarding/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Leave Requests" %} - AEC Group{% endblock %}
+
+{% block content %}
+<div class="flex items-end justify-between mb-6">
+    <div>
+        <h1 class="text-3xl font-bold text-slate-900">{% trans "Leave Requests" %}</h1>
+        <p class="text-slate-500 mt-1">
+            {% if is_manager %}{% trans "Review pending requests and approve or reject." %}
+            {% else %}{% trans "Submit and track your leave requests." %}{% endif %}
+        </p>
+    </div>
+    <a href="{% url 'leave:create' %}" class="px-5 py-2.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700" data-testid="leave-new-btn">
+        + {% trans "New Request" %}
+    </a>
+</div>
+
+{% if messages %}
+<div class="mb-4">{% for m in messages %}<div class="mb-2 p-3 rounded-lg text-sm bg-blue-50 border border-blue-200 text-blue-800">{{ m }}</div>{% endfor %}</div>
+{% endif %}
+
+{% if is_manager %}
+<h2 class="text-lg font-semibold text-slate-900 mb-3">{% trans "Pending" %} ({{ pending|length }})</h2>
+<div class="bg-white rounded-xl border border-slate-200 overflow-hidden mb-8">
+    <table class="w-full text-sm" data-testid="pending-table">
+        <thead class="bg-amber-50 text-xs font-semibold text-amber-800 uppercase">
+            <tr>
+                <th class="p-3 text-left">{% trans "Employee" %}</th>
+                <th class="p-3 text-left">{% trans "Type" %}</th>
+                <th class="p-3 text-left">{% trans "From" %}</th>
+                <th class="p-3 text-left">{% trans "To" %}</th>
+                <th class="p-3 text-left">{% trans "Reason" %}</th>
+                <th class="p-3 text-right">{% trans "Action" %}</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for l in pending %}
+            <tr>
+                <td class="p-3"><div class="font-medium">{{ l.profile.user.get_full_name }}</div><div class="text-xs text-slate-500">{{ l.profile.employee_id }}</div></td>
+                <td class="p-3">{{ l.get_leave_type_display }}</td>
+                <td class="p-3">{{ l.start_date }}</td>
+                <td class="p-3">{{ l.end_date }}</td>
+                <td class="p-3 text-slate-600 text-xs max-w-xs truncate">{{ l.reason }}</td>
+                <td class="p-3 text-right whitespace-nowrap">
+                    <form method="post" action="{% url 'leave:decision' l.pk %}" class="inline">
+                        {% csrf_token %}
+                        <button name="action" value="approve" class="text-emerald-700 hover:underline text-xs" data-testid="leave-approve-{{ l.pk }}">{% trans "Approve" %}</button>
+                        <button name="action" value="reject" class="ml-2 text-red-600 hover:underline text-xs" data-testid="leave-reject-{{ l.pk }}">{% trans "Reject" %}</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="p-6 text-center text-slate-500">{% trans "No pending requests." %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<h2 class="text-lg font-semibold text-slate-900 mb-3">{% trans "History" %}</h2>
+<div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+    <table class="w-full text-sm" data-testid="leave-history-table">
+        <thead class="bg-slate-50 text-xs font-semibold text-slate-500 uppercase">
+            <tr>
+                {% if is_manager %}<th class="p-3 text-left">{% trans "Employee" %}</th>{% endif %}
+                <th class="p-3 text-left">{% trans "Type" %}</th>
+                <th class="p-3 text-left">{% trans "From" %}</th>
+                <th class="p-3 text-left">{% trans "To" %}</th>
+                <th class="p-3 text-left">{% trans "Status" %}</th>
+                {% if not is_manager %}<th class="p-3 text-right">{% trans "Action" %}</th>{% endif %}
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for l in history %}
+            <tr>
+                {% if is_manager %}<td class="p-3">{{ l.profile.user.get_full_name }}</td>{% endif %}
+                <td class="p-3">{{ l.get_leave_type_display }}</td>
+                <td class="p-3">{{ l.start_date }}</td>
+                <td class="p-3">{{ l.end_date }}</td>
+                <td class="p-3">
+                    {% if l.status == 'APPROVED' %}<span class="px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-800">{% trans "Approved" %}</span>
+                    {% elif l.status == 'REJECTED' %}<span class="px-2 py-0.5 rounded text-xs bg-red-100 text-red-800">{% trans "Rejected" %}</span>
+                    {% elif l.status == 'CANCELLED' %}<span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">{% trans "Cancelled" %}</span>
+                    {% else %}<span class="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">{% trans "Pending" %}</span>{% endif %}
+                </td>
+                {% if not is_manager %}
+                <td class="p-3 text-right">
+                    {% if l.status == 'PENDING' %}
+                    <form method="post" action="{% url 'leave:cancel' l.pk %}" class="inline">{% csrf_token %}<button class="text-red-600 hover:underline text-xs">{% trans "Cancel" %}</button></form>
+                    {% endif %}
+                </td>
+                {% endif %}
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="p-6 text-center text-slate-500">{% trans "No history." %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

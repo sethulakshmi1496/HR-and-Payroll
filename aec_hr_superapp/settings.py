@@ -22,33 +22,41 @@ INSTALLED_APPS = [
     'rest_framework',
     'django_extensions',
     'django_q',
+    'django_otp',
+    'django_otp.plugins.otp_totp',
+    'django_otp.plugins.otp_static',
     'core',
     'onboarding',
     'attendance',
     'payroll',
+    'leave',
+    'twofa',
 ]
 
-# django-q2 — lightweight scheduler/queue (used for attendance late check
-# and monthly payroll generation on the 28th).
+# django-q2 — real worker via supervisor (program:qcluster). sync=True only
+# kicks in if the worker is unavailable (allows tests to keep working).
 Q_CLUSTER = {
     'name': 'aec_hr',
-    'workers': 1,
+    'workers': 2,
     'recycle': 500,
     'timeout': 60,
     'retry': 120,
     'queue_limit': 50,
     'bulk': 5,
     'orm': 'default',
-    'sync': True,  # In dev: run synchronously inside the request thread.
-    'log_level': 'WARNING',
+    'sync': config('Q_CLUSTER_SYNC', default=False, cast=bool),
+    'log_level': 'INFO',
 }
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django_otp.middleware.OTPMiddleware',
+    'twofa.middleware.EnforceMD2FAMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -89,7 +97,12 @@ AUTH_PASSWORD_VALIDATORS = [
 
 AUTH_USER_MODEL = 'core.User'
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'en'
+LANGUAGES = [
+    ('en', 'English'),
+    ('ml', 'മലയാളം'),
+]
+LOCALE_PATHS = [BASE_DIR / 'locale']
 TIME_ZONE = 'Asia/Kolkata'
 USE_I18N = True
 USE_TZ = True

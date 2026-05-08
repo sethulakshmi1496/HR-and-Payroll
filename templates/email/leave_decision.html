@@ -1,0 +1,13 @@
+{% extends 'email/base.html' %}
+{% block subject %}Leave {{ leave.get_status_display }}{% endblock %}
+{% block body %}
+<h2 style="margin:0 0 12px;color:#0f172a;font-size:18px;">Your leave request was {{ leave.get_status_display|lower }}</h2>
+<table cellpadding="6" style="margin:16px 0;border-collapse:collapse;width:100%;">
+  <tr><td style="background:#f8fafc;font-weight:bold;width:160px;">Type</td><td>{{ leave.get_leave_type_display }}</td></tr>
+  <tr><td style="background:#f8fafc;font-weight:bold;">From</td><td>{{ leave.start_date }}</td></tr>
+  <tr><td style="background:#f8fafc;font-weight:bold;">To</td><td>{{ leave.end_date }}</td></tr>
+  <tr><td style="background:#f8fafc;font-weight:bold;">Status</td><td><strong>{{ leave.get_status_display }}</strong></td></tr>
+  {% if leave.rejection_reason %}<tr><td style="background:#f8fafc;font-weight:bold;">Reason</td><td>{{ leave.rejection_reason }}</td></tr>{% endif %}
+  <tr><td style="background:#f8fafc;font-weight:bold;">Reviewed by</td><td>{{ leave.approved_by.get_full_name|default:"HR" }}</td></tr>
+</table>
+{% endblock %}

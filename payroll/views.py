@@ -11,7 +11,6 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.core.mail import send_mail
 from django.http import HttpResponse, HttpResponseForbidden, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -26,6 +25,7 @@ from core.models import (
     Payroll,
     User,
 )
+from twofa.emails import send_html_mail
 from .pdf import build_payslip_pdf
 from .service import (
     KERALA_PT_SLABS,
@@ -138,14 +138,17 @@ class GenerateView(HRorMDRequiredMixin, View):
             is_active=True,
         ).exclude(email='').values_list('email', flat=True))
         if heads_emails:
-            send_mail(
+            send_html_mail(
                 subject=f"[AEC HR] Payroll drafts ready — {month:02d}/{year} (48h review)",
-                message=(f"{len(created)} payroll drafts have been generated for "
-                         f"{month:02d}/{year}. Please review within 48 hours.\n\n"
-                         f"Visit /payroll/ to review."),
-                from_email='no-reply@aecgroup.in',
-                recipient_list=heads_emails,
-                fail_silently=True,
+                template_name='email/payroll_ready.html',
+                context={
+                    'count': len(created),
+                    'month': f"{month:02d}",
+                    'year': year,
+                    'link': request.build_absolute_uri(
+                        f"{reverse_lazy('payroll:dashboard')}?year={year}&month={month}"),
+                },
+                to=heads_emails,
             )
 
         AuditLog.objects.create(
