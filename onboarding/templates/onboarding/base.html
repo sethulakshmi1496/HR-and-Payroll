@@ -120,9 +120,22 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
 
-            <div class="zh-search hidden md:flex" data-testid="topbar-search">
+            {# ── Breadcrumbs ── #}
+            <nav class="zh-crumbs hidden md:flex" aria-label="Breadcrumb" data-testid="breadcrumbs">
+                {% for crumb in zh_breadcrumbs %}
+                    {% if not forloop.first %}<span class="zh-crumb-sep">/</span>{% endif %}
+                    {% if crumb.url and not forloop.last %}
+                        <a href="{{ crumb.url }}">{{ crumb.label }}</a>
+                    {% else %}
+                        <span class="zh-crumb-last">{{ crumb.label }}</span>
+                    {% endif %}
+                {% endfor %}
+            </nav>
+
+            <div class="zh-search hidden md:flex" data-testid="topbar-search" onclick="zhOpenCmdk()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-                <input type="text" placeholder="{% trans 'Search employees, payroll, leave…' %}" />
+                <input type="text" placeholder="{% trans 'Search…' %}" readonly tabindex="-1" style="cursor:text; pointer-events:none;"/>
+                <kbd id="zh-cmdk-shortcut">⌘K</kbd>
             </div>
 
             <div class="zh-topbar-spacer"></div>
@@ -142,9 +155,21 @@
                 <svg id="zh-theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
             </button>
 
-            <button class="zh-icon-btn" aria-label="Notifications" data-testid="notifications-btn">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-            </button>
+            <div class="zh-notif-wrap">
+                <button class="zh-icon-btn" id="zh-notif-btn" onclick="zhToggleNotif(event)" aria-label="Notifications" data-testid="notifications-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    <span class="zh-notif-dot" id="zh-notif-count" style="display:none;">0</span>
+                </button>
+                <div class="zh-notif-pop" id="zh-notif-pop" data-testid="notifications-pop">
+                    <div class="zh-notif-head">
+                        <span>{% trans "Notifications" %}</span>
+                        <span class="zh-notif-count" id="zh-notif-head-count">0</span>
+                    </div>
+                    <div id="zh-notif-list">
+                        <div class="zh-notif-empty">{% trans "Loading…" %}</div>
+                    </div>
+                </div>
+            </div>
 
             <div style="position:relative;">
                 <button class="zh-user-chip" onclick="zhToggleMenu(event)" data-testid="user-menu-btn">
@@ -197,6 +222,26 @@
 
 {% endif %}
 
+{# ───────── Command palette (Cmd/Ctrl+K) ───────── #}
+{% if request.user.is_authenticated %}
+<div class="zh-cmdk-overlay" id="zh-cmdk-overlay" onclick="zhCloseCmdk(event)" data-testid="cmdk-overlay">
+    <div class="zh-cmdk" onclick="event.stopPropagation()" role="dialog" aria-label="Command palette">
+        <div class="zh-cmdk-input-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="zh-cmdk-input" class="zh-cmdk-input" type="text" placeholder="{% trans 'Search employees, leave, payroll, pages…' %}" autocomplete="off" oninput="zhFetchCmdk(this.value)" data-testid="cmdk-input">
+            <span class="zh-cmdk-esc">ESC</span>
+        </div>
+        <div class="zh-cmdk-body" id="zh-cmdk-body" data-testid="cmdk-body">
+            <div class="zh-cmdk-empty">{% trans "Start typing to search…" %}</div>
+        </div>
+        <div class="zh-cmdk-foot">
+            <div class="zh-keys"><kbd>↑</kbd><kbd>↓</kbd> {% trans "navigate" %}</div>
+            <div class="zh-keys"><kbd>↵</kbd> {% trans "open" %} · <kbd>ESC</kbd> {% trans "close" %}</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <script>
     function zhApplyTheme(t) {
         document.documentElement.setAttribute('data-theme', t);
@@ -230,7 +275,195 @@
         if (m && !e.target.closest('#zh-user-menu') && !e.target.closest('[data-testid="user-menu-btn"]')) {
             m.classList.remove('open');
         }
+        var np = document.getElementById('zh-notif-pop');
+        if (np && np.classList.contains('open') && !e.target.closest('#zh-notif-pop') && !e.target.closest('#zh-notif-btn')) {
+            np.classList.remove('open');
+        }
     });
+
+    // ── Command palette ──
+    var zhCmdkTimer = null;
+    var zhCmdkItems = [];
+    var zhCmdkIndex = 0;
+
+    function zhOpenCmdk() {
+        var o = document.getElementById('zh-cmdk-overlay');
+        if (!o) return;
+        o.classList.add('open');
+        setTimeout(function() {
+            var i = document.getElementById('zh-cmdk-input');
+            if (i) {
+                i.focus();
+                i.select();
+                // Safety net: attach a direct listener (in addition to oninput attr)
+                if (!i._zhBound) {
+                    i.addEventListener('input', function() { zhFetchCmdk(i.value); });
+                    i.addEventListener('keyup', function() { zhFetchCmdk(i.value); });
+                    i._zhBound = true;
+                }
+            }
+        }, 40);
+        zhFetchCmdk('');
+    }
+    function zhCloseCmdk(e) {
+        if (e && e.target && !e.target.classList.contains('zh-cmdk-overlay')) return;
+        var o = document.getElementById('zh-cmdk-overlay');
+        if (o) o.classList.remove('open');
+    }
+    function zhFetchCmdk(q) {
+        var body = document.getElementById('zh-cmdk-body');
+        if (!body) return;
+        if (zhCmdkTimer) clearTimeout(zhCmdkTimer);
+        zhCmdkTimer = setTimeout(function() {
+            fetch('/api/search/?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) { zhRenderCmdk(data); })
+                .catch(function() {
+                    body.innerHTML = '<div class="zh-cmdk-empty">Unable to load results.</div>';
+                });
+        }, 140);
+    }
+    function zhSvg(name) {
+        var svgs = {
+            user:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+            leave:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>',
+            payroll: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="12" cy="12.5" r="3"/></svg>',
+            page:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>'
+        };
+        return svgs[name] || svgs.page;
+    }
+    function zhRenderCmdk(data) {
+        var body = document.getElementById('zh-cmdk-body');
+        zhCmdkItems = [];
+        var html = '';
+        function section(title, items, icon) {
+            if (!items || !items.length) return;
+            html += '<div class="zh-cmdk-section">' + title + '</div>';
+            items.forEach(function(it) {
+                var idx = zhCmdkItems.length;
+                zhCmdkItems.push(it.url);
+                html += '<a class="zh-cmdk-item" data-idx="' + idx + '" href="' + it.url + '">'
+                    + '<span class="zh-cmdk-item-icon">' + zhSvg(icon) + '</span>'
+                    + '<span class="zh-cmdk-item-text">'
+                    +     '<div class="zh-cmdk-item-title">' + (it.name || it.label) + '</div>'
+                    +     (it.meta ? '<div class="zh-cmdk-item-meta">' + it.meta + '</div>' : '')
+                    + '</span></a>';
+            });
+        }
+        section('Pages', data.pages, 'page');
+        section('Employees', data.employees, 'user');
+        section('Leave', data.leaves, 'leave');
+        section('Payroll', data.payroll, 'payroll');
+        if (!zhCmdkItems.length) {
+            html = '<div class="zh-cmdk-empty">No results.</div>';
+        }
+        body.innerHTML = html;
+        zhCmdkIndex = 0;
+        zhHighlightCmdk();
+    }
+    function zhHighlightCmdk() {
+        var nodes = document.querySelectorAll('.zh-cmdk-item');
+        nodes.forEach(function(n, i) {
+            n.classList.toggle('is-active', i === zhCmdkIndex);
+            if (i === zhCmdkIndex) n.scrollIntoView({ block: 'nearest' });
+        });
+    }
+    document.addEventListener('keydown', function(e) {
+        var openOverlay = document.getElementById('zh-cmdk-overlay');
+        var isOpen = openOverlay && openOverlay.classList.contains('open');
+        var mod = e.metaKey || e.ctrlKey;
+        if (mod && (e.key === 'k' || e.key === 'K')) {
+            e.preventDefault();
+            isOpen ? zhCloseCmdk({target: openOverlay}) : zhOpenCmdk();
+            return;
+        }
+        if (!isOpen) return;
+        if (e.key === 'Escape') { zhCloseCmdk({target: openOverlay}); return; }
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (zhCmdkItems.length) {
+                zhCmdkIndex = (zhCmdkIndex + 1) % zhCmdkItems.length;
+                zhHighlightCmdk();
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (zhCmdkItems.length) {
+                zhCmdkIndex = (zhCmdkIndex - 1 + zhCmdkItems.length) % zhCmdkItems.length;
+                zhHighlightCmdk();
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (zhCmdkItems[zhCmdkIndex]) window.location.href = zhCmdkItems[zhCmdkIndex];
+        }
+    });
+    document.addEventListener('input', function(e) {
+        if (e.target && e.target.id === 'zh-cmdk-input') {
+            zhFetchCmdk(e.target.value);
+        }
+    });
+    // Trigger input on first open so initial pages list renders immediately
+    // Show platform-specific shortcut hint
+    (function() {
+        var k = document.getElementById('zh-cmdk-shortcut');
+        if (k) k.textContent = (navigator.platform || '').toLowerCase().includes('mac') ? '⌘K' : 'Ctrl K';
+    })();
+
+    // ── Notifications ──
+    function zhToggleNotif(e) {
+        e.stopPropagation();
+        var p = document.getElementById('zh-notif-pop');
+        if (!p) return;
+        var isOpen = p.classList.toggle('open');
+        if (isOpen) zhLoadNotif();
+    }
+    function zhNotifSvg(icon) {
+        if (icon === 'verify') return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>';
+        if (icon === 'clock')  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>';
+        return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>';
+    }
+    function zhLoadNotif() {
+        var list = document.getElementById('zh-notif-list');
+        if (!list) return;
+        list.innerHTML = '<div class="zh-notif-empty">Loading…</div>';
+        fetch('/api/notifications/', { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                document.getElementById('zh-notif-head-count').textContent = data.count;
+                if (!data.items || !data.items.length) {
+                    list.innerHTML = '<div class="zh-notif-empty">You\'re all caught up 🎉</div>';
+                    return;
+                }
+                list.innerHTML = data.items.map(function(it) {
+                    return '<a class="zh-notif-item" href="' + it.url + '">'
+                        + '<span class="zh-notif-icon tone-' + it.tone + '">' + zhNotifSvg(it.icon) + '</span>'
+                        + '<span class="zh-notif-text">'
+                        +     '<div class="zh-notif-title">' + it.title + '</div>'
+                        +     '<div class="zh-notif-body">' + it.body + '</div>'
+                        + '</span>'
+                        + '<span class="zh-notif-time">' + it.time + '</span>'
+                        + '</a>';
+                }).join('');
+            })
+            .catch(function() {
+                list.innerHTML = '<div class="zh-notif-empty">Unable to load notifications.</div>';
+            });
+    }
+    function zhInitNotifBadge() {
+        fetch('/api/notifications/', { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var d = document.getElementById('zh-notif-count');
+                if (!d) return;
+                if (data.count > 0) {
+                    d.textContent = data.count > 99 ? '99+' : data.count;
+                    d.style.display = '';
+                } else {
+                    d.style.display = 'none';
+                }
+            })
+            .catch(function() {});
+    }
+    if (document.getElementById('zh-notif-btn')) zhInitNotifBadge();
 </script>
 
 </body>

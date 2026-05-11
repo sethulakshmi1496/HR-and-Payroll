@@ -9,6 +9,7 @@ from django.conf.urls.static import static
 from django.shortcuts import redirect, render
 from django.contrib.auth import views as auth_views
 from core.views import setup_owner, signup
+from core.api_views import search as api_search, notifications as api_notifications
 
 @login_required
 def dashboard(request):
@@ -41,6 +42,10 @@ urlpatterns = [
     path('accounts/', include('django.contrib.auth.urls')),
     path('i18n/', include('django.conf.urls.i18n')),
     path('dashboard/', dashboard, name='dashboard'),
+
+    # JSON APIs powering the Zoho-style shell
+    path('api/search/', api_search, name='api_search'),
+    path('api/notifications/', api_notifications, name='api_notifications'),
     
     # AEC Super App Modules
     path('onboarding/', include('onboarding.urls')),
