@@ -1,40 +1,55 @@
 {% extends 'onboarding/base.html' %}
-
 {% block title %}Complete Onboarding - AEC Group{% endblock %}
 
 {% block content %}
 <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
     <div class="bg-blue-600 px-8 py-6">
         <h2 class="text-2xl font-bold text-white">Welcome to AEC Group</h2>
-        <p class="text-blue-100 text-sm mt-1">Please complete your profile for the {{ invite.department.name }} department.</p>
+        <p class="text-blue-100 text-sm mt-1">Complete your profile for the <strong>{{ candidate.department.name }}</strong> department. You can only submit this form once.</p>
     </div>
 
     <form method="post" enctype="multipart/form-data" class="p-8 space-y-8">
         {% csrf_token %}
-        
-        <!-- Section 1: Personal Details -->
+
+        <!-- Section 1: Personal Details + Photo -->
         <div>
             <h3 class="text-lg font-semibold text-slate-900 border-b border-slate-200 pb-2 mb-4">Personal Details</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">First Name</label>
-                    {{ form.first_name }}
+            <div class="flex flex-col md:flex-row gap-6">
+                <!-- Profile Photo Upload -->
+                <div class="flex flex-col items-center gap-3">
+                    <div class="w-28 h-28 rounded-full bg-slate-100 border-2 border-slate-300 flex items-center justify-center overflow-hidden" id="photo-preview-wrapper">
+                        <img id="photo-preview" src="" alt="Preview" class="w-full h-full object-cover hidden">
+                        <svg id="photo-placeholder" class="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        </svg>
+                    </div>
+                    <label class="block text-sm font-medium text-slate-700">Profile Photo *</label>
+                    {{ form.profile_pic }}
+                    <p class="text-xs text-slate-400">This will be your app profile picture.</p>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Last Name</label>
-                    {{ form.last_name }}
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Phone</label>
-                    {{ form.phone }}
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Aadhaar Number</label>
-                    {{ form.aadhaar }}
-                </div>
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-slate-700">Personal Bank Account (Probation Salary)</label>
-                    {{ form.personal_account }}
+
+                <!-- Other personal fields -->
+                <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">First Name *</label>
+                        {{ form.first_name }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Last Name *</label>
+                        {{ form.last_name }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Phone Number *</label>
+                        {{ form.phone }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Aadhaar Number *</label>
+                        {{ form.aadhaar }}
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Personal Bank Account (Probation Salary) *</label>
+                        {{ form.personal_account }}
+                    </div>
                 </div>
             </div>
         </div>
@@ -42,35 +57,54 @@
         <!-- Section 2: Document Vault -->
         <div>
             <h3 class="text-lg font-semibold text-slate-900 border-b border-slate-200 pb-2 mb-4">Document Vault</h3>
-            <div class="grid grid-cols-1 gap-6">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Profile Picture *</label>
-                    {{ form.profile_pic }}
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">ID Proof (Aadhaar/PAN) *</label>
+            <p class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 mb-5">
+                ⚠️ <strong>Important:</strong> Once you submit this form, you cannot edit or re-upload your documents. Please ensure everything is correct before submitting.
+            </p>
+            <div class="grid grid-cols-1 gap-5">
+                <div class="p-4 border border-slate-200 rounded-lg">
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">ID Proof (Aadhaar / PAN) *</label>
+                    <p class="text-xs text-slate-400 mb-2">Clear scan or photo of your government ID.</p>
                     {{ form.id_proof }}
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Highest Academic Certificate *</label>
+                <div class="p-4 border border-slate-200 rounded-lg">
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Highest Academic Certificate *</label>
+                    <p class="text-xs text-slate-400 mb-2">Degree/Diploma certificate or mark sheet.</p>
                     {{ form.academic_doc }}
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Experience Letter (Optional)</label>
+                <div class="p-4 border border-slate-200 rounded-lg">
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Experience Letter <span class="text-slate-400 font-normal">(Optional)</span></label>
+                    <p class="text-xs text-slate-400 mb-2">Relieving or experience letter from previous employer.</p>
                     {{ form.exp_letter }}
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Previous Salary Slips (Optional)</label>
+                <div class="p-4 border border-slate-200 rounded-lg">
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Previous Salary Slips <span class="text-slate-400 font-normal">(Optional)</span></label>
+                    <p class="text-xs text-slate-400 mb-2">Last 3 months salary slips if available.</p>
                     {{ form.salary_slips }}
                 </div>
             </div>
         </div>
 
         <div class="pt-4 border-t border-slate-200 flex justify-end">
-            <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-all">
+            <button type="submit" class="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-all shadow-sm">
                 Submit Profile for Review
             </button>
         </div>
     </form>
 </div>
+
+<script>
+    // Live photo preview
+    document.querySelector('input[type="file"][name="profile_pic"]').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                document.getElementById('photo-preview').src = ev.target.result;
+                document.getElementById('photo-preview').classList.remove('hidden');
+                document.getElementById('photo-placeholder').classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+</script>
 {% endblock %}

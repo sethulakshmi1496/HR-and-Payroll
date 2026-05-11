@@ -8,8 +8,12 @@
 
 <div class="flex flex-wrap items-end justify-between gap-4 mb-6">
     <div>
-        <h1 class="text-3xl font-bold text-slate-900">Payroll</h1>
-        <p class="text-slate-500 mt-1">{% if is_manager %}Manage and approve monthly payroll across departments.{% else %}Your monthly payslips & history.{% endif %}</p>
+        <h1 class="text-3xl font-bold text-slate-900">Payroll{% if request.user.role == 'MD' %} Report{% endif %}</h1>
+        <p class="text-slate-500 mt-1">
+            {% if request.user.role == 'MD' %}Payroll overview across all departments.
+            {% elif is_manager %}Manage and approve monthly payroll across departments.
+            {% else %}Your monthly payslips & history.{% endif %}
+        </p>
     </div>
 
     <form method="get" class="flex items-center gap-2" data-testid="month-selector">
@@ -44,8 +48,8 @@
 </div>
 {% endif %}
 
-{% if is_manager %}
-<!-- Generate / Approve panel -->
+{% if is_manager and request.user.role != 'MD' %}
+<!-- Generate / Approve panel — HR only -->
 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
     <div class="flex items-center justify-between mb-4">
         <h3 class="font-semibold text-slate-900">Generate payroll for {{ month }}/{{ year }}</h3>
@@ -86,7 +90,9 @@
                     <th class="p-3 text-right">Ded.</th>
                     <th class="p-3 text-right">Net</th>
                     <th class="p-3 text-left">Status</th>
+                    {% if request.user.role != 'MD' %}
                     <th class="p-3 text-right">Action</th>
+                    {% endif %}
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -114,17 +120,19 @@
                         {% endif %}
                     </td>
                     <td class="p-3 text-right whitespace-nowrap">
-                        {% if is_manager and not p.is_locked %}
-                        <form method="post" action="{% url 'payroll:approve' p.pk %}" class="inline">
-                            {% csrf_token %}
-                            {% if p.status != 'HR_APPROVED' %}
-                            <button name="action" value="approve" class="text-blue-600 hover:underline text-xs" data-testid="approve-btn-{{ p.pk }}">Approve</button>
+                        {% if request.user.role != 'MD' %}
+                            {% if is_manager and not p.is_locked %}
+                            <form method="post" action="{% url 'payroll:approve' p.pk %}" class="inline">
+                                {% csrf_token %}
+                                {% if p.status != 'HR_APPROVED' %}
+                                <button name="action" value="approve" class="text-blue-600 hover:underline text-xs" data-testid="approve-btn-{{ p.pk }}">Approve</button>
+                                {% endif %}
+                                <button name="action" value="finalize" class="ml-2 text-emerald-700 hover:underline text-xs" data-testid="finalize-btn-{{ p.pk }}">Finalize</button>
+                            </form>
                             {% endif %}
-                            <button name="action" value="finalize" class="ml-2 text-emerald-700 hover:underline text-xs" data-testid="finalize-btn-{{ p.pk }}">Finalize</button>
-                        </form>
                         {% endif %}
                         <a href="{% url 'payroll:slip' p.month.year p.month.month %}{% if is_manager %}?profile_id={{ p.profile.id }}{% endif %}"
-                           class="ml-2 text-slate-700 hover:underline text-xs" data-testid="slip-link-{{ p.pk }}">PDF</a>
+                           class="ml-2 text-slate-700 hover:underline text-xs" data-testid="slip-link-{{ p.pk }}">PDF ↓</a>
                     </td>
                 </tr>
                 {% empty %}
@@ -142,10 +150,11 @@
 </div>
 
 {% if is_md %}
-<!-- Incentives editor (MD only) -->
+<!-- Incentives — read-only for MD, editable form hidden -->
 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6" data-testid="incentives-editor">
     <h3 class="font-semibold text-slate-900 mb-4">Incentives — {{ month }}/{{ year }}</h3>
 
+    {% if request.user.role != 'MD' %}
     <form method="post" action="{% url 'payroll:incentive_add' %}" class="grid grid-cols-1 md:grid-cols-6 gap-3 mb-6">
         {% csrf_token %}
         <input type="hidden" name="year" value="{{ year }}">
@@ -161,6 +170,9 @@
         <input type="number" step="0.01" min="0" max="100" name="visuals_pct" placeholder="% visual" class="px-3 py-2 border border-slate-300 rounded-lg text-sm">
         <button type="submit" class="px-4 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700" data-testid="incentive-add-btn">Add</button>
     </form>
+    {% else %}
+    <p class="text-xs text-slate-400 mb-4 italic">Contact HR to add or remove incentives.</p>
+    {% endif %}
 
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -170,7 +182,9 @@
                     <th class="p-3 text-left">Type</th>
                     <th class="p-3 text-right">Amount</th>
                     <th class="p-3 text-right">% Visual</th>
+                    {% if request.user.role != 'MD' %}
                     <th class="p-3 text-right">Action</th>
+                    {% endif %}
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -187,12 +201,14 @@
                             <span>{{ i.visuals_pct }}%</span>
                         </div>
                     </td>
+                    {% if request.user.role != 'MD' %}
                     <td class="p-3 text-right">
                         <form method="post" action="{% url 'payroll:incentive_delete' i.pk %}" class="inline">
                             {% csrf_token %}
                             <button class="text-red-600 hover:underline text-xs" data-testid="incentive-del-{{ i.pk }}">Delete</button>
                         </form>
                     </td>
+                    {% endif %}
                 </tr>
                 {% empty %}
                 <tr><td colspan="5" class="p-6 text-center text-slate-500">No incentives this month.</td></tr>

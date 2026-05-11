@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+    <div style="max-w: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+        <h2 style="color: #2563eb;">Welcome to AEC Group!</h2>
+        <p>Dear <strong>{{ profile.user.get_full_name }}</strong>,</p>
+        <p>Following the successful verification of your onboarding documents, we are thrilled to officially offer you the position of <strong>{{ profile.designation }}</strong> within the <strong>{{ profile.department.name }}</strong> department.</p>
+        
+        <h3>Employment Details:</h3>
+        <ul>
+            <li><strong>Employment Type:</strong> {{ profile.get_probation_status_display }}</li>
+            {% if probation_duration %}<li><strong>Probation Duration:</strong> {{ probation_duration }}</li>{% endif %}
+            <li><strong>Monthly Base Salary:</strong> ₹{{ profile.basic_salary }}</li>
+            <li><strong>Official Joining Date:</strong> {{ profile.date_of_joining|date:"F d, Y" }}</li>
+        </ul>
+
+        <h3>Key Duties & Responsibilities:</h3>
+        <p style="white-space: pre-wrap; background-color: #f8fafc; padding: 15px; border-left: 4px solid #2563eb;">{{ duties }}</p>
+
+        {% if additional_notes %}
+        <h3>Additional Information:</h3>
+        <p style="white-space: pre-wrap; color: #444;">{{ additional_notes }}</p>
+        {% endif %}
+
+        <p>Your profile is now fully active in our systems. We look forward to welcoming you to the team on your joining date.</p>
+        
+        <p style="margin-top: 40px; font-size: 0.8em; color: #999; border-top: 1px solid #eee; padding-top: 10px;">
+            Managing Director / HR<br>
+            AEC Group
+        </p>
+    </div>
+</body>
+</html>

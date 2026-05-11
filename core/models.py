@@ -178,6 +178,15 @@ class EmployeeProfile(models.Model):
         choices=ProbationStatus.choices,
         default=ProbationStatus.PROBATION,
     )
+    
+    # Onboarding and Lifecycle
+    onboarding_status = models.CharField(
+        max_length=20,
+        choices=[('PENDING', 'Pending'), ('VERIFIED', 'Verified'), ('REJECTED', 'Rejected')],
+        default='PENDING',
+    )
+    rejection_reason = models.CharField(max_length=255, blank=True)
+    probation_end_date = models.DateField(null=True, blank=True)
 
     # Aadhaar: stored MASKED only (XXXXXXXX1234)
     aadhaar_masked = models.CharField(
@@ -258,6 +267,12 @@ class Attendance(models.Model):
     )
 
     ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    # Human-readable location label (department name / office)
+    location_name = models.CharField(
+        max_length=200, blank=True,
+        help_text='Location name at time of check-in (department / office)'
+    )
 
     # Face capture image path (no biometrics stored)
     face_image_path = models.CharField(

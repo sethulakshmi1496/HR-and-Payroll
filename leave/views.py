@@ -51,6 +51,23 @@ class LeaveListView(LoginRequiredMixin, View):
         u = request.user
         is_manager = u.role in [User.Role.HR, User.Role.MD, User.Role.DEPT_HEAD]
 
+        # ── MD gets a read-only "On Leave Today" report only ──────────
+        if u.role == User.Role.MD:
+            today = date.today()
+            on_leave_today = LeaveRequest.objects.filter(
+                status=LeaveRequest.Status.APPROVED,
+                start_date__lte=today,
+                end_date__gte=today,
+            ).select_related(
+                'profile__user', 'profile__department'
+            ).order_by('profile__department__name', 'start_date')
+            return render(request, 'leave/list.html', {
+                'is_manager': True,
+                'is_md': True,
+                'on_leave_today': on_leave_today,
+                'today': today,
+            })
+
         if is_manager:
             qs = LeaveRequest.objects.select_related(
                 'profile__user', 'profile__department', 'approved_by'

@@ -1,91 +1,237 @@
-<<<<<<< HEAD
-<!DOCTYPE html>
-<html lang="en">
-=======
-{% load i18n %}
+{% load i18n static %}
 <!DOCTYPE html>
 <html lang="{{ LANGUAGE_CODE|default:'en' }}">
->>>>>>> origin/conflict_080526_1642
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}AEC HR SuperApp{% endblock %}</title>
+
+    <script>
+        (function() { try {
+            var t = localStorage.getItem('aec_theme') || 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        } catch(e) {} })();
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' };</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Malayalam:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/zoho.css' %}">
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-<<<<<<< HEAD
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        body.md-readonly form:not([data-allow-md]) { display: none !important; }
+        body.md-readonly button[type="submit"]:not([data-allow-md]) { display: none !important; }
+        body.md-readonly a.action-btn { display: none !important; }
+        body.md-readonly [data-md-hide] { display: none !important; }
+        body.md-readonly form[data-allow-md] { display: inline !important; }
     </style>
 </head>
-<body class="text-slate-800 antialiased min-h-screen flex flex-col">
-    <!-- Navbar -->
-    <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <span class="text-2xl font-bold text-blue-600 tracking-tight">AEC Group</span>
-                    <span class="ml-2 text-sm font-medium text-slate-500 mt-1">| HR SuperApp</span>
-=======
-        body { font-family: 'Inter', 'Noto Sans Malayalam', sans-serif; background-color: #f8fafc; }
-    </style>
-</head>
-<body class="text-slate-800 antialiased min-h-screen flex flex-col">
-    <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16 items-center">
-                <a href="{% url 'dashboard' %}" class="flex items-center" data-testid="nav-home">
-                    <span class="text-2xl font-bold text-blue-600 tracking-tight">AEC Group</span>
-                    <span class="ml-2 text-sm font-medium text-slate-500">| HR SuperApp</span>
-                </a>
+<body class="antialiased{% if request.user.role == 'MD' %} md-readonly{% endif %}">
 
-                <div class="flex items-center gap-3">
-                    {% if request.user.is_authenticated %}
-                    <a href="{% url 'leave:list' %}" class="text-sm text-slate-600 hover:text-slate-900 hidden sm:inline">{% trans "Leave" %}</a>
-                    <a href="{% url 'attendance:dashboard' %}" class="text-sm text-slate-600 hover:text-slate-900 hidden sm:inline">{% trans "Attendance" %}</a>
-                    <a href="{% url 'payroll:dashboard' %}" class="text-sm text-slate-600 hover:text-slate-900 hidden sm:inline">{% trans "Payroll" %}</a>
-                    {% endif %}
+{% if not request.user.is_authenticated %}
+{# Fallback: if some view renders base.html for an unauthenticated user, just show centered content. #}
+<div class="zh-public">
+    <div class="w-full" style="max-width:480px;">
+        {% if messages %}
+        <div class="mb-4 space-y-2">
+            {% for message in messages %}
+            <div class="p-3 rounded-lg text-sm border {% if message.tags == 'success' %}bg-green-50 text-green-800 border-green-200{% elif message.tags == 'error' %}bg-red-50 text-red-800 border-red-200{% else %}bg-blue-50 text-blue-800 border-blue-200{% endif %}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% block content_public %}{% endblock %}
+    </div>
+</div>
 
-                    <form action="{% url 'set_language' %}" method="post" class="inline" data-testid="language-form">
-                        {% csrf_token %}
-                        <input type="hidden" name="next" value="{{ request.path }}">
-                        <select name="language" onchange="this.form.submit()" class="text-xs border border-slate-300 rounded px-2 py-1" data-testid="language-select">
-                            {% get_current_language as LANGUAGE_CODE %}
-                            <option value="en" {% if LANGUAGE_CODE == 'en' %}selected{% endif %}>EN</option>
-                            <option value="ml" {% if LANGUAGE_CODE == 'ml' %}selected{% endif %}>മലയാളം</option>
-                        </select>
-                    </form>
+{% else %}
 
-                    {% if request.user.is_authenticated %}
-                    <span class="text-xs text-slate-500 hidden md:inline">{{ request.user.username }}</span>
-                    <form method="post" action="{% url 'logout' %}" class="inline">{% csrf_token %}
-                        <button class="text-xs text-red-600 hover:text-red-800" data-testid="nav-logout">{% trans "Logout" %}</button>
-                    </form>
-                    {% endif %}
->>>>>>> origin/conflict_080526_1642
-                </div>
+<div class="zh-shell">
+    <div class="zh-backdrop" onclick="document.body.classList.remove('zh-sidebar-open')"></div>
+
+    <aside class="zh-sidebar" data-testid="zh-sidebar">
+        <div class="zh-brand">
+            <div class="zh-brand-mark">AE</div>
+            <div class="zh-brand-text">
+                AEC Group
+                <small>HR SuperApp</small>
             </div>
         </div>
-    </nav>
 
-<<<<<<< HEAD
-    <!-- Main Content -->
-=======
->>>>>>> origin/conflict_080526_1642
-    <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
-        {% block content %}{% endblock %}
-    </main>
+        <nav class="zh-nav">
+            <div class="zh-nav-section">{% trans "Workspace" %}</div>
 
-<<<<<<< HEAD
-    <!-- Footer -->
-    <footer class="bg-white border-t border-slate-200 mt-auto py-6">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-slate-500">
-            &copy; 2026 AEC Group. All rights reserved.
-=======
-    <footer class="bg-white border-t border-slate-200 mt-auto py-6">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-slate-500">
-            &copy; 2026 AEC Group. {% trans "All rights reserved." %}
->>>>>>> origin/conflict_080526_1642
+            <a href="{% url 'dashboard' %}" class="zh-nav-item{% if request.path == '/dashboard/' %} active{% endif %}" data-testid="nav-dashboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+                <span class="zh-nav-label">{% trans "Dashboard" %}</span>
+            </a>
+
+            <a href="{% url 'attendance:dashboard' %}" class="zh-nav-item{% if '/attendance/' in request.path %} active{% endif %}" data-testid="nav-attendance">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+                <span class="zh-nav-label">{% trans "Attendance" %}</span>
+            </a>
+
+            <a href="{% url 'leave:list' %}" class="zh-nav-item{% if '/leave/' in request.path %} active{% endif %}" data-testid="nav-leave">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+                <span class="zh-nav-label">{% trans "Leave" %}</span>
+            </a>
+
+            <a href="{% url 'payroll:dashboard' %}" class="zh-nav-item{% if '/payroll/' in request.path %} active{% endif %}" data-testid="nav-payroll">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="12" cy="12.5" r="3"/><path d="M6 9v.01M18 16v.01"/></svg>
+                <span class="zh-nav-label">{% trans "Payroll" %}</span>
+            </a>
+
+            <a href="{% url 'onboarding:onboarding_dashboard' %}" class="zh-nav-item{% if '/onboarding/' in request.path %} active{% endif %}" data-testid="nav-onboarding">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+                <span class="zh-nav-label">{% trans "Onboarding" %}</span>
+            </a>
+
+            <a href="{% url 'assets:dashboard' %}" class="zh-nav-item{% if '/assets/' in request.path %} active{% endif %}" data-testid="nav-assets">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7 12 3 4 7l8 4 8-4z"/><path d="M4 7v10l8 4 8-4V7"/><path d="M12 11v10"/></svg>
+                <span class="zh-nav-label">{% trans "Assets & NOC" %}</span>
+            </a>
+
+            {% if request.user.role == 'HR' %}
+            <a href="{% url 'communications:send_promotion' %}" class="zh-nav-item{% if '/communications/' in request.path %} active{% endif %}" data-testid="nav-communications">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <span class="zh-nav-label">{% trans "Mailers" %}</span>
+            </a>
+            {% endif %}
+
+            <div class="zh-nav-section">{% trans "Quick" %}</div>
+            <a href="{% url 'attendance:clock' %}" class="zh-nav-item{% if '/clock/' in request.path %} active{% endif %}" data-testid="nav-clock">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>
+                <span class="zh-nav-label">{% trans "Clock In/Out" %}</span>
+            </a>
+        </nav>
+
+        <div class="zh-sidebar-foot">
+            <button class="zh-icon-btn" style="width:100%; justify-content:flex-start; gap:10px; padding:0 12px; height:38px;" onclick="zhToggleMini()" data-testid="sidebar-collapse">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M15 18l-6-6 6-6"/></svg>
+                <span class="zh-nav-label" style="font-size:12px;">{% trans "Collapse" %}</span>
+            </button>
         </div>
-    </footer>
+    </aside>
+
+    <div class="zh-main">
+        <header class="zh-topbar">
+            <button class="zh-icon-btn md:hidden" onclick="document.body.classList.toggle('zh-sidebar-open')" data-testid="sidebar-toggle" aria-label="Menu">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+
+            <div class="zh-search hidden md:flex" data-testid="topbar-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+                <input type="text" placeholder="{% trans 'Search employees, payroll, leave…' %}" />
+            </div>
+
+            <div class="zh-topbar-spacer"></div>
+
+            <form action="{% url 'set_language' %}" method="post" class="inline-flex items-center" data-allow-md data-testid="language-form">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <select name="language" onchange="this.form.submit()" class="text-xs rounded-md px-2 py-1.5" style="background:var(--surface-alt); border:1px solid var(--border); color:var(--text);" data-testid="language-select">
+                    {% get_current_language as LANGUAGE_CODE %}
+                    <option value="en" {% if LANGUAGE_CODE == 'en' %}selected{% endif %}>EN</option>
+                    <option value="ml" {% if LANGUAGE_CODE == 'ml' %}selected{% endif %}>മലയാളം</option>
+                </select>
+            </form>
+
+            <button class="zh-icon-btn" onclick="zhToggleTheme()" data-testid="theme-toggle" aria-label="Toggle theme" title="{% trans 'Toggle theme' %}">
+                <svg id="zh-theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+                <svg id="zh-theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </button>
+
+            <button class="zh-icon-btn" aria-label="Notifications" data-testid="notifications-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </button>
+
+            <div style="position:relative;">
+                <button class="zh-user-chip" onclick="zhToggleMenu(event)" data-testid="user-menu-btn">
+                    <span class="zh-avatar">{{ request.user.first_name|first|default:request.user.username|first|upper }}{{ request.user.last_name|first|upper }}</span>
+                    <span class="hidden md:inline-flex flex-col items-start leading-tight">
+                        <span class="zh-user-name">{{ request.user.first_name|default:request.user.username }}</span>
+                        <span class="zh-user-role">{{ request.user.get_role_display|default:"Member" }}</span>
+                    </span>
+                </button>
+                <div class="zh-menu" id="zh-user-menu" data-testid="user-menu">
+                    <div style="padding:10px 12px 4px;">
+                        <div class="zh-user-name">{{ request.user.get_full_name|default:request.user.username }}</div>
+                        <div class="zh-user-role">{{ request.user.email }}</div>
+                    </div>
+                    <div class="divider"></div>
+                    <a href="{% url 'dashboard' %}" data-testid="menu-dashboard">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+                        {% trans "Dashboard" %}
+                    </a>
+                    <button type="button" onclick="zhToggleTheme()" data-testid="menu-theme">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                        <span>{% trans "Toggle theme" %}</span>
+                    </button>
+                    <div class="divider"></div>
+                    <form method="post" action="{% url 'logout' %}" data-allow-md style="margin:0;">{% csrf_token %}
+                        <button type="submit" data-testid="nav-logout" style="color:#dc2626;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                            {% trans "Logout" %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </header>
+
+        <main class="zh-content">
+            {% if messages %}
+            <div class="mb-6 space-y-3">
+                {% for message in messages %}
+                <div class="p-4 rounded-lg text-sm border font-medium {% if message.tags == 'success' %}bg-green-50 text-green-800 border-green-200{% elif message.tags == 'error' %}bg-red-50 text-red-800 border-red-200{% elif message.tags == 'warning' %}bg-yellow-50 text-yellow-800 border-yellow-200{% else %}bg-blue-50 text-blue-800 border-blue-200{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</div>
+
+{% endif %}
+
+<script>
+    function zhApplyTheme(t) {
+        document.documentElement.setAttribute('data-theme', t);
+        try { localStorage.setItem('aec_theme', t); } catch(e) {}
+        var sun = document.getElementById('zh-theme-icon-sun');
+        var moon = document.getElementById('zh-theme-icon-moon');
+        if (sun && moon) {
+            sun.style.display = (t === 'dark') ? '' : 'none';
+            moon.style.display = (t === 'dark') ? 'none' : '';
+        }
+    }
+    function zhToggleTheme() {
+        var cur = document.documentElement.getAttribute('data-theme') || 'light';
+        zhApplyTheme(cur === 'dark' ? 'light' : 'dark');
+    }
+    zhApplyTheme(document.documentElement.getAttribute('data-theme') || 'light');
+
+    function zhToggleMini() {
+        document.body.classList.toggle('zh-sidebar-mini');
+        try { localStorage.setItem('aec_sidebar_mini', document.body.classList.contains('zh-sidebar-mini') ? '1' : '0'); } catch(e) {}
+    }
+    (function() { try { if (localStorage.getItem('aec_sidebar_mini') === '1') document.body.classList.add('zh-sidebar-mini'); } catch(e) {} })();
+
+    function zhToggleMenu(e) {
+        e.stopPropagation();
+        var m = document.getElementById('zh-user-menu');
+        if (m) m.classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+        var m = document.getElementById('zh-user-menu');
+        if (m && !e.target.closest('#zh-user-menu') && !e.target.closest('[data-testid="user-menu-btn"]')) {
+            m.classList.remove('open');
+        }
+    });
+</script>
+
 </body>
 </html>

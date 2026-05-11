@@ -1,32 +1,3 @@
-<<<<<<< HEAD
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-from django.utils import timezone
-from datetime import timedelta
-from core.models import Attendance
-
-@receiver(post_save, sender=Attendance)
-def check_late_attendance(sender, instance, created, **kwargs):
-    """
-    Stub for Celery task. Checks if the employee is late.
-    Triggered post-save of Attendance.
-    """
-    if created and instance.in_time and not instance.profile.department.is_cinema:
-        # Assuming standard shift start is 09:00 AM local time
-        # We simulate a Celery async check here
-        shift_start = timezone.now().replace(hour=9, minute=0, second=0, microsecond=0)
-        grace_period = timedelta(minutes=15)
-        
-        if instance.in_time > (shift_start + grace_period):
-            # Calculate late minutes
-            late_delta = instance.in_time - shift_start
-            
-            # Use update() to avoid recursive save() signals
-            Attendance.objects.filter(id=instance.id).update(
-                is_late=True,
-                late_minutes=int(late_delta.total_seconds() / 60)
-            )
-=======
 """
 Attendance signal — late check + escalation.
 
@@ -93,15 +64,16 @@ def _escalate_discipline(att, late_min):
     ).exists():
         return
 
-    # Count late attendances in the month INCLUDING this one (chronological order
-    # determines which event gets which severity).
+    # Count late attendances in the month INCLUDING this one
     late_atts_qs = Attendance.objects.filter(
         profile=profile,
         date__gte=month_start,
         date__lt=_next_month(month_start),
         is_late=True,
     ).order_by('date', 'in_time')
-    n = list(late_atts_qs.values_list('id', flat=True)).index(att.id) + 1 if att.id in list(late_atts_qs.values_list('id', flat=True)) else late_atts_qs.count()
+    
+    late_ids = list(late_atts_qs.values_list('id', flat=True))
+    n = late_ids.index(att.id) + 1 if att.id in late_ids else late_atts_qs.count()
 
     severity = None
     deduction = Decimal('0')
@@ -132,6 +104,7 @@ def _escalate_discipline(att, late_min):
         recipients.append(profile.user.email)
     if profile.department.head and profile.department.head.email:
         recipients.append(profile.department.head.email)
+    
     if recipients:
         send_html_mail(
             subject=f"[AEC HR] Late attendance — {profile.user.get_full_name()} (#{n} this month)",
@@ -155,11 +128,13 @@ def _next_month(d):
 def check_late_attendance(sender, instance, created, **kwargs):
     if instance.in_time is None:
         return
+    # Skip if we are just updating the 'is_late' field itself (prevents infinite loop)
     if kwargs.get('update_fields') and 'is_late' in (kwargs.get('update_fields') or set()):
         return
+    
     try:
         from django_q.tasks import async_task
         async_task('attendance.signals._process_late_check', instance.pk)
-    except Exception:
+    except ImportError:
+        # Fallback to synchronous if Django-Q is not running/installed
         _process_late_check(instance.pk)
->>>>>>> origin/conflict_080526_1642

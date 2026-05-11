@@ -1,0 +1,57 @@
+{% extends 'registration/_base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Sign Up" %} - AEC HR SuperApp{% endblock %}
+
+{% block content %}
+<div class="zh-public-card">
+    <h2 class="text-xl font-semibold mb-1" style="color:var(--text-strong);">{% trans "Create your account" %}</h2>
+    <p class="text-sm mb-6" style="color:var(--text-muted);">{% trans "Join your team's AEC HR workspace." %}</p>
+
+    {% if error %}
+    <div class="mb-4 p-3 rounded-lg text-sm bg-red-50 border border-red-200 text-red-700">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <div>
+            <label class="block text-xs font-semibold mb-1.5" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">{% trans "Email" %}</label>
+            <input type="email" name="email" required autofocus class="w-full px-3.5 py-2.5 rounded-lg text-sm outline-none" style="background:var(--surface-alt);border:1px solid var(--border);">
+        </div>
+        <div>
+            <label class="block text-xs font-semibold mb-1.5" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">{% trans "Username" %}</label>
+            <input type="text" name="username" required class="w-full px-3.5 py-2.5 rounded-lg text-sm outline-none" style="background:var(--surface-alt);border:1px solid var(--border);">
+        </div>
+        <div>
+            <label class="block text-xs font-semibold mb-1.5" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">{% trans "Role" %}</label>
+            <select name="role" required class="w-full px-3.5 py-2.5 rounded-lg text-sm outline-none" style="background:var(--surface-alt);border:1px solid var(--border);">
+                <option value="">{% trans "Select a role…" %}</option>
+                {% for value, label in roles %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+                <label class="block text-xs font-semibold mb-1.5" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">{% trans "Password" %}</label>
+                <input type="password" name="password" required class="w-full px-3.5 py-2.5 rounded-lg text-sm outline-none" style="background:var(--surface-alt);border:1px solid var(--border);">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold mb-1.5" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">{% trans "Confirm" %}</label>
+                <input type="password" name="re_password" required class="w-full px-3.5 py-2.5 rounded-lg text-sm outline-none" style="background:var(--surface-alt);border:1px solid var(--border);">
+            </div>
+        </div>
+
+        <button type="submit" class="w-full py-2.5 text-white font-medium rounded-lg text-sm transition"
+                style="background:var(--brand-500);box-shadow:0 4px 12px rgba(30,116,227,.25);">
+            {% trans "Create account" %}
+        </button>
+    </form>
+
+    <div class="mt-6 text-center text-sm" style="color:var(--text-muted);">
+        {% trans "Already a member?" %} <a href="{% url 'login' %}" class="font-semibold hover:underline" style="color:var(--brand-500);">{% trans "Sign in" %}</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,416 @@
+/* ============================================================
+   AEC HR — Zoho People style UI
+   Light theme + dark theme tokens, sidebar shell, dark-mode
+   overrides for the Tailwind utility classes already in templates.
+   ============================================================ */
+
+:root {
+    /* Brand */
+    --brand-50:  #e8f1ff;
+    --brand-100: #d4e5ff;
+    --brand-500: #1e74e3;
+    --brand-600: #1665d1;
+    --brand-700: #0f57b8;
+    --accent:    #e0492c;   /* zoho red/orange accent */
+
+    /* Surfaces (light) */
+    --bg:           #f3f5f8;
+    --surface:      #ffffff;
+    --surface-alt:  #f9fafb;
+    --topbar:       #ffffff;
+    --sidebar:      #ffffff;
+    --sidebar-hover:#eff3f8;
+    --sidebar-active-bg:#e8f1ff;
+    --sidebar-active-fg:#1665d1;
+
+    /* Text */
+    --text:         #1f2937;
+    --text-strong:  #0f172a;
+    --text-muted:   #64748b;
+    --text-soft:    #94a3b8;
+
+    /* Lines */
+    --border:       #e5e9f0;
+    --border-soft:  #eef1f5;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(15, 23, 42, .04);
+    --shadow:    0 4px 14px rgba(15, 23, 42, .06);
+    --shadow-lg: 0 10px 30px rgba(15, 23, 42, .08);
+
+    /* Layout */
+    --sidebar-w:        232px;
+    --sidebar-w-mini:   64px;
+    --topbar-h:         60px;
+    --radius:           10px;
+}
+
+html[data-theme="dark"] {
+    --bg:           #0b0f17;
+    --surface:      #131a26;
+    --surface-alt:  #0f1622;
+    --topbar:       #121826;
+    --sidebar:      #0e1320;
+    --sidebar-hover:#1a2333;
+    --sidebar-active-bg:#10243f;
+    --sidebar-active-fg:#7ab6ff;
+
+    --text:         #e5e7eb;
+    --text-strong:  #f8fafc;
+    --text-muted:   #94a3b8;
+    --text-soft:    #64748b;
+
+    --border:       #1f2a3c;
+    --border-soft:  #18222f;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .35);
+    --shadow:    0 4px 14px rgba(0, 0, 0, .45);
+    --shadow-lg: 0 10px 30px rgba(0, 0, 0, .55);
+}
+
+/* ---------- Base ---------- */
+html, body { background: var(--bg); color: var(--text); }
+body { font-family: 'Inter', 'Noto Sans Malayalam', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+
+a { color: inherit; }
+
+/* ---------- Shell ---------- */
+.zh-shell { min-height: 100vh; display: flex; }
+
+/* Sidebar */
+.zh-sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    background: var(--sidebar);
+    border-right: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    z-index: 40;
+    transition: width .18s ease;
+}
+body.zh-sidebar-mini .zh-sidebar { width: var(--sidebar-w-mini); }
+body.zh-sidebar-mini .zh-nav-label,
+body.zh-sidebar-mini .zh-brand-text { display: none; }
+body.zh-sidebar-mini .zh-nav-item { justify-content: center; padding-left: 0; padding-right: 0; }
+
+.zh-brand {
+    height: var(--topbar-h);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 18px;
+    border-bottom: 1px solid var(--border-soft);
+    color: var(--text-strong);
+}
+.zh-brand-mark {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 13px; letter-spacing: .3px;
+    box-shadow: 0 4px 12px rgba(30, 116, 227, .35);
+    flex-shrink: 0;
+}
+.zh-brand-text { font-weight: 700; font-size: 15px; letter-spacing: -.01em; white-space: nowrap; }
+.zh-brand-text small { display: block; font-size: 10px; font-weight: 500; color: var(--text-muted); letter-spacing: .04em; text-transform: uppercase; }
+
+.zh-nav { flex: 1; overflow-y: auto; padding: 14px 10px; }
+.zh-nav-section { font-size: 10px; font-weight: 600; color: var(--text-soft); letter-spacing: .12em; text-transform: uppercase; padding: 12px 12px 6px; }
+body.zh-sidebar-mini .zh-nav-section { visibility: hidden; height: 18px; padding: 0; }
+
+.zh-nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 9px 12px;
+    margin: 2px 0;
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-size: 13.5px;
+    font-weight: 500;
+    text-decoration: none;
+    position: relative;
+    transition: background .12s, color .12s;
+    white-space: nowrap;
+}
+.zh-nav-item:hover { background: var(--sidebar-hover); color: var(--text-strong); }
+.zh-nav-item svg { width: 18px; height: 18px; flex-shrink: 0; stroke-width: 2; }
+.zh-nav-item.active {
+    background: var(--sidebar-active-bg);
+    color: var(--sidebar-active-fg);
+    font-weight: 600;
+}
+.zh-nav-item.active::before {
+    content: '';
+    position: absolute; left: -10px; top: 6px; bottom: 6px;
+    width: 3px;
+    background: var(--brand-500);
+    border-radius: 0 3px 3px 0;
+}
+body.zh-sidebar-mini .zh-nav-item.active::before { left: 0; }
+
+.zh-sidebar-foot {
+    padding: 10px;
+    border-top: 1px solid var(--border-soft);
+}
+
+/* Topbar */
+.zh-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.zh-topbar {
+    height: var(--topbar-h);
+    background: var(--topbar);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 22px;
+    position: sticky; top: 0; z-index: 30;
+    backdrop-filter: blur(6px);
+}
+.zh-topbar-title { font-size: 15px; font-weight: 600; color: var(--text-strong); }
+.zh-topbar-spacer { flex: 1; }
+.zh-icon-btn {
+    width: 36px; height: 36px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 8px;
+    color: var(--text-muted);
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background .12s, color .12s, border-color .12s;
+}
+.zh-icon-btn:hover { background: var(--sidebar-hover); color: var(--text-strong); border-color: var(--border-soft); }
+.zh-icon-btn svg { width: 18px; height: 18px; stroke-width: 2; }
+
+.zh-search {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 12px;
+    width: 280px;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+.zh-search input {
+    background: transparent; border: 0; outline: 0;
+    color: var(--text); font-size: 13px; width: 100%;
+}
+.zh-search svg { width: 15px; height: 15px; flex-shrink: 0; }
+@media (max-width: 768px) { .zh-search { display: none; } }
+
+.zh-user-chip {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 5px 10px 5px 5px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    transition: background .12s;
+}
+.zh-user-chip:hover { background: var(--sidebar-hover); }
+.zh-avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, #f97316, #e0492c);
+    color: #fff; font-weight: 700; font-size: 12px;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.zh-user-name { font-size: 12.5px; font-weight: 600; color: var(--text-strong); }
+.zh-user-role { font-size: 10.5px; color: var(--text-muted); }
+
+.zh-menu {
+    position: absolute; top: 48px; right: 18px;
+    min-width: 220px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    padding: 8px;
+    display: none;
+    z-index: 50;
+}
+.zh-menu.open { display: block; }
+.zh-menu a, .zh-menu button {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; text-align: left;
+    padding: 9px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text);
+    background: transparent; border: 0; cursor: pointer;
+    text-decoration: none;
+}
+.zh-menu a:hover, .zh-menu button:hover { background: var(--sidebar-hover); color: var(--text-strong); }
+.zh-menu .divider { height: 1px; background: var(--border-soft); margin: 6px 4px; }
+
+/* Content area */
+.zh-content { padding: 26px 28px 40px; }
+@media (max-width: 640px) { .zh-content { padding: 18px 14px 30px; } }
+
+/* Sidebar toggle on mobile */
+.zh-backdrop {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(15, 23, 42, .4);
+    z-index: 35;
+}
+@media (max-width: 900px) {
+    .zh-sidebar {
+        position: fixed; left: 0; top: 0;
+        transform: translateX(-100%);
+        transition: transform .2s ease;
+    }
+    body.zh-sidebar-open .zh-sidebar { transform: translateX(0); }
+    body.zh-sidebar-open .zh-backdrop { display: block; }
+    body.zh-sidebar-mini .zh-sidebar { width: var(--sidebar-w); }
+    body.zh-sidebar-mini .zh-nav-label,
+    body.zh-sidebar-mini .zh-brand-text { display: block; }
+    body.zh-sidebar-mini .zh-nav-item { justify-content: flex-start; padding-left: 12px; padding-right: 12px; }
+}
+
+/* ---------- Public layout (login / setup) ---------- */
+.zh-public {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 30px 16px;
+    background:
+      radial-gradient(900px 500px at 12% 8%, rgba(30, 116, 227, .12), transparent 60%),
+      radial-gradient(700px 460px at 92% 92%, rgba(224, 73, 44, .10), transparent 60%),
+      var(--bg);
+}
+.zh-public-card {
+    width: 100%; max-width: 420px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+    padding: 36px 32px;
+}
+.zh-public-brand {
+    display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 22px;
+}
+.zh-public-brand .zh-brand-mark { width: 44px; height: 44px; font-size: 16px; border-radius: 12px; }
+
+/* ============================================================
+   Dark-mode overrides for the Tailwind utility classes that
+   are baked into the existing module templates.
+   ============================================================ */
+html[data-theme="dark"] .bg-white            { background-color: var(--surface) !important; }
+html[data-theme="dark"] .bg-slate-50         { background-color: var(--surface-alt) !important; }
+html[data-theme="dark"] .bg-slate-100        { background-color: #1e2837 !important; }
+
+html[data-theme="dark"] .text-slate-900      { color: var(--text-strong) !important; }
+html[data-theme="dark"] .text-slate-800      { color: var(--text-strong) !important; }
+html[data-theme="dark"] .text-slate-700      { color: var(--text) !important; }
+html[data-theme="dark"] .text-slate-600      { color: #cbd5e1 !important; }
+html[data-theme="dark"] .text-slate-500      { color: var(--text-muted) !important; }
+html[data-theme="dark"] .text-slate-400      { color: var(--text-soft) !important; }
+
+html[data-theme="dark"] .border-slate-100    { border-color: var(--border-soft) !important; }
+html[data-theme="dark"] .border-slate-200    { border-color: var(--border) !important; }
+html[data-theme="dark"] .border-slate-300    { border-color: #334155 !important; }
+html[data-theme="dark"] .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: var(--border-soft) !important; }
+html[data-theme="dark"] .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color: var(--border) !important; }
+
+/* Hover row */
+html[data-theme="dark"] .hover\:bg-slate-50:hover { background-color: #1a2333 !important; }
+html[data-theme="dark"] .hover\:bg-slate-100:hover{ background-color: #1e2837 !important; }
+
+/* Tinted badges & alerts — keep semantic colour but darken background */
+html[data-theme="dark"] .bg-blue-50      { background-color: rgba(30,116,227,.14) !important; }
+html[data-theme="dark"] .bg-blue-100     { background-color: rgba(30,116,227,.22) !important; }
+html[data-theme="dark"] .text-blue-700,
+html[data-theme="dark"] .text-blue-800   { color: #93c5fd !important; }
+html[data-theme="dark"] .border-blue-200 { border-color: rgba(30,116,227,.35) !important; }
+
+html[data-theme="dark"] .bg-emerald-50,
+html[data-theme="dark"] .bg-green-50     { background-color: rgba(16,185,129,.12) !important; }
+html[data-theme="dark"] .bg-emerald-100,
+html[data-theme="dark"] .bg-green-100    { background-color: rgba(16,185,129,.20) !important; }
+html[data-theme="dark"] .text-emerald-700,
+html[data-theme="dark"] .text-emerald-800,
+html[data-theme="dark"] .text-green-700,
+html[data-theme="dark"] .text-green-800  { color: #6ee7b7 !important; }
+html[data-theme="dark"] .border-emerald-200,
+html[data-theme="dark"] .border-green-200 { border-color: rgba(16,185,129,.35) !important; }
+
+html[data-theme="dark"] .bg-amber-50,
+html[data-theme="dark"] .bg-yellow-50    { background-color: rgba(245,158,11,.12) !important; }
+html[data-theme="dark"] .bg-amber-100,
+html[data-theme="dark"] .bg-yellow-100   { background-color: rgba(245,158,11,.22) !important; }
+html[data-theme="dark"] .text-amber-700,
+html[data-theme="dark"] .text-amber-800,
+html[data-theme="dark"] .text-yellow-800 { color: #fcd34d !important; }
+html[data-theme="dark"] .border-amber-200,
+html[data-theme="dark"] .border-yellow-200 { border-color: rgba(245,158,11,.35) !important; }
+
+html[data-theme="dark"] .bg-red-50       { background-color: rgba(239,68,68,.12) !important; }
+html[data-theme="dark"] .bg-red-100      { background-color: rgba(239,68,68,.22) !important; }
+html[data-theme="dark"] .bg-rose-50      { background-color: rgba(244,63,94,.12) !important; }
+html[data-theme="dark"] .text-red-600,
+html[data-theme="dark"] .text-red-700,
+html[data-theme="dark"] .text-red-800,
+html[data-theme="dark"] .text-rose-600,
+html[data-theme="dark"] .text-rose-700   { color: #fca5a5 !important; }
+html[data-theme="dark"] .border-red-200,
+html[data-theme="dark"] .border-rose-200 { border-color: rgba(239,68,68,.35) !important; }
+
+html[data-theme="dark"] .bg-orange-50    { background-color: rgba(249,115,22,.12) !important; }
+html[data-theme="dark"] .bg-orange-100   { background-color: rgba(249,115,22,.22) !important; }
+html[data-theme="dark"] .text-orange-600,
+html[data-theme="dark"] .text-orange-700 { color: #fdba74 !important; }
+
+html[data-theme="dark"] .bg-indigo-50    { background-color: rgba(99,102,241,.14) !important; }
+html[data-theme="dark"] .text-indigo-600,
+html[data-theme="dark"] .text-indigo-700 { color: #a5b4fc !important; }
+
+html[data-theme="dark"] .bg-cyan-50      { background-color: rgba(6,182,212,.14) !important; }
+html[data-theme="dark"] .text-cyan-600   { color: #67e8f9 !important; }
+html[data-theme="dark"] .text-teal-600   { color: #5eead4 !important; }
+
+/* Form controls inherit theme */
+input, select, textarea {
+    color: var(--text);
+    background-color: var(--surface);
+}
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+    background-color: var(--surface-alt) !important;
+    color: var(--text) !important;
+    border-color: var(--border) !important;
+}
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder { color: var(--text-soft); }
+html[data-theme="dark"] .bg-slate-50.focus\:bg-white:focus,
+html[data-theme="dark"] input:focus,
+html[data-theme="dark"] select:focus,
+html[data-theme="dark"] textarea:focus { background-color: var(--surface) !important; }
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+html[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #334155; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Refined zoho-style buttons (the existing .bg-blue-600 hover already covers it) */
+button, .btn { transition: background .14s, color .14s, transform .14s, box-shadow .14s; }
+button:active { transform: translateY(1px); }
+
+/* Tab styling refinement */
+.tab-btn { transition: all .14s ease; }
+
+/* Make primary buttons feel a touch more Zoho-ish */
+.bg-blue-600 { background-color: var(--brand-500) !important; }
+.hover\:bg-blue-700:hover { background-color: var(--brand-600) !important; }
+.text-blue-600 { color: var(--brand-500) !important; }
+.hover\:text-blue-700:hover { color: var(--brand-600) !important; }
+.focus\:ring-blue-500:focus { --tw-ring-color: var(--brand-500) !important; }
+.focus\:border-blue-500:focus { border-color: var(--brand-500) !important; }
+.focus\:ring-blue-200:focus { --tw-ring-color: rgba(30,116,227,.25) !important; }
+
+/* Soft cards (used on dashboards) */
+.bg-white.rounded-xl { box-shadow: var(--shadow-sm); }
+.bg-white.rounded-xl:hover { transition: box-shadow .15s ease, border-color .15s ease; }

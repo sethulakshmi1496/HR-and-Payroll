@@ -8,9 +8,25 @@ class InviteToken(models.fields.related.ForeignKey):
     pass # To avoid circular import issues, although not really needed here if we import carefully.
 
 class InviteToken(models.Model):
+    class ProbationStatus(models.TextChoices):
+        PROBATION = 'PROBATION', 'Probation'
+        PERMANENT = 'PERMANENT', 'Permanent'
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    email = models.EmailField(unique=True)
+    candidate_name = models.CharField(max_length=100, blank=True)
+    email = models.EmailField() # Removed unique=True to allow editing drafts/re-inviting
     department = models.ForeignKey(Department, on_delete=models.CASCADE)
+    job_position = models.CharField(max_length=100, blank=True)
+    probation_status = models.CharField(
+        max_length=20, 
+        choices=ProbationStatus.choices, 
+        default=ProbationStatus.PROBATION
+    )
+    duties = models.TextField(blank=True)
+    salary = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    joining_date = models.DateField(null=True, blank=True)
+    
+    is_draft = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     is_used = models.BooleanField(default=False)

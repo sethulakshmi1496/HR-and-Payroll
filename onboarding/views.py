@@ -1,208 +1,304 @@
-import os
 from django.shortcuts import render, redirect, get_object_or_404
-from django.views import View
-from django.contrib.auth.mixins import UserPassesTestMixin
-from django.core.mail import EmailMessage
-from django.urls import reverse
-from django.utils import timezone
-from django.core.files.storage import FileSystemStorage
-from django.conf import settings
-
-from core.models import User, EmployeeProfile, AuditLog
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib import messages
 from .models import InviteToken
 from .forms import HRInviteForm, CandidateOnboardingForm
-from .utils import generate_official_joining_letter
-<<<<<<< HEAD
-=======
-from twofa.emails import send_html_mail
->>>>>>> origin/conflict_080526_1642
+from .utils import send_onboarding_email
 
-class HRRequiredMixin(UserPassesTestMixin):
-    def test_func(self):
-        return self.request.user.is_authenticated and self.request.user.role in [User.Role.HR, User.Role.MD]
+from core.models import User
 
-class InviteView(HRRequiredMixin, View):
-    def get(self, request):
-        form = HRInviteForm()
-        return render(request, 'onboarding/invite.html', {'form': form})
+def is_hr_or_md(user):
+    return user.is_authenticated and user.role in [User.Role.HR, User.Role.MD]
 
-    def post(self, request):
+@login_required
+@user_passes_test(is_hr_or_md)
+def invite_candidate(request):
+    if request.method == 'POST':
         form = HRInviteForm(request.POST)
         if form.is_valid():
-            invite = form.save()
-            invite_url = request.build_absolute_uri(reverse('onboarding:candidate', args=[invite.id]))
-            
-            # Send Email
-            subject = f"Join AEC Group - {invite.department.name}"
-            body = f"Hello,\n\nYou have been invited to join AEC Group ({invite.department.name}).\n\nPlease complete your onboarding by clicking the link below:\n{invite_url}\n\nThis link expires in 7 days."
-            email = EmailMessage(subject, body, to=[invite.email])
-            email.send()
-            
-            return redirect('onboarding:invite')
-        return render(request, 'onboarding/invite.html', {'form': form})
+            candidate = form.save()
+            success = send_onboarding_email(candidate)
+            if success:
+                messages.success(request, f"Invitation successfully sent to {candidate.email}")
+            else:
+                messages.error(request, f"Failed to dispatch email. Please check SMTP configuration.")
+            return redirect('onboarding:hr_verify_list')
+    else:
+        form = HRInviteForm()
+    return render(request, 'onboarding/invite.html', {'form': form})
 
-class CandidateView(View):
-    def get(self, request, token):
-        invite = get_object_or_404(InviteToken, id=token)
-        if not invite.is_valid:
-            return render(request, 'onboarding/invalid_token.html')
-        form = CandidateOnboardingForm()
-        return render(request, 'onboarding/candidate_form.html', {'form': form, 'invite': invite})
-
-    def post(self, request, token):
-        invite = get_object_or_404(InviteToken, id=token)
-        if not invite.is_valid:
-            return render(request, 'onboarding/invalid_token.html')
-            
-        form = CandidateOnboardingForm(request.POST, request.FILES)
-        if form.is_valid():
-            # Create Inactive User
-            username = form.cleaned_data['email'] if 'email' in form.cleaned_data else invite.email
-            user = User.objects.create_user(
-                username=username,
-                email=invite.email,
-                first_name=form.cleaned_data['first_name'],
-                last_name=form.cleaned_data['last_name'],
-                phone=form.cleaned_data['phone'],
-                profile_picture=request.FILES['profile_pic'],
-                is_active=False # Pending HR Verification
-            )
-            
-            # Handle File Uploads for Docs Vault
-            fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, 'docs_vault'))
-            docs_vault = {}
-            for doc_field in ['academic_doc', 'id_proof', 'exp_letter', 'salary_slips']:
-                file = request.FILES.get(doc_field)
-                if file:
-                    filename = fs.save(f"{invite.id}_{file.name}", file)
-                    docs_vault[doc_field] = {
-                        'url': fs.url(filename),
-                        'verified': False,
-                        'uploaded_at': timezone.now().isoformat()
-                    }
-                    
-            # Mask Aadhaar
-            aadhaar_raw = form.cleaned_data['aadhaar']
-            aadhaar_masked = f"XXXXXXXX{aadhaar_raw[-4:]}" if len(aadhaar_raw) >= 4 else "INVALID"
-
-            # Create Draft Profile
-            profile = EmployeeProfile.objects.create(
-                user=user,
-                department=invite.department,
-                personal_account=form.cleaned_data['personal_account'],
-                aadhaar_masked=aadhaar_masked,
-                docs_vault=docs_vault,
-                probation_status=EmployeeProfile.ProbationStatus.PROBATION,
-                notice_period_days=30,
-                is_locked=False
-            )
-            
-            invite.is_used = True
-            invite.profile = profile
-            invite.save()
-            
-            return render(request, 'onboarding/success.html')
-            
-        return render(request, 'onboarding/candidate_form.html', {'form': form, 'invite': invite})
-
-class HRVerifyView(HRRequiredMixin, View):
-    def get(self, request):
-        pending_profiles = EmployeeProfile.objects.filter(is_locked=False, user__is_active=False)
-<<<<<<< HEAD
-        return render(request, 'onboarding/hr_verify.html', {'profiles': pending_profiles})
-=======
-        locked_profiles = EmployeeProfile.objects.filter(user__is_active=True).exclude(
-            user__username__in=['md_aec', 'hr_aec']
-        ).select_related('user', 'department').order_by('-updated_at')[:30]
-        return render(request, 'onboarding/hr_verify.html', {
-            'profiles': pending_profiles,
-            'locked_profiles': locked_profiles,
-        })
->>>>>>> origin/conflict_080526_1642
-
-    def post(self, request):
+@login_required
+@user_passes_test(is_hr_or_md)
+def hr_verify_list(request):
+    from core.models import EmployeeProfile
+    
+    if request.method == 'POST':
         profile_id = request.POST.get('profile_id')
         action = request.POST.get('action')
         profile = get_object_or_404(EmployeeProfile, id=profile_id)
         
         if action == 'confirm':
-            profile.is_locked = True
-            profile.user.is_active = True
-            profile.date_of_joining = timezone.now().date()
-            profile.save()
-            profile.user.save()
-            
-<<<<<<< HEAD
-            # Generate PDF and Email
-            pdf_data, pdf_path = generate_official_joining_letter(profile)
-            
-            subject = f"Welcome to AEC Group - Official Joining Letter"
-            body = f"Dear {profile.user.first_name},\n\nYour documents have been verified. Welcome to AEC Group!\n\nPlease find your official joining letter attached."
-            email = EmailMessage(subject, body, to=[profile.user.email])
-            email.attach(f"Joining_Letter_{profile.employee_id}.pdf", pdf_data, 'application/pdf')
-            email.send()
-=======
-            # Generate PDF and send HTML welcome email
-            pdf_data, pdf_path = generate_official_joining_letter(profile)
-            send_html_mail(
-                subject="Welcome to AEC Group — Joining Letter",
-                template_name='email/onboarding_welcome.html',
-                context={'profile': profile},
-                to=[profile.user.email],
-                attachments=[(
-                    f"Joining_Letter_{profile.employee_id}.pdf",
-                    pdf_data,
-                    'application/pdf',
-                )],
-            )
->>>>>>> origin/conflict_080526_1642
-            
-            # Audit Log
-            AuditLog.objects.create(
-                profile=profile,
-                performed_by=request.user,
-                action=AuditLog.ActionType.PROFILE_LOCKED,
-                details={'notes': 'HR Verified Docs, Sent PDF'},
-                ip_address=request.META.get('REMOTE_ADDR')
-            )
-            
+            # Instead of activating, redirect to offer creation page
+            return redirect('onboarding:create_offer', profile_id=profile.id)
         elif action == 'reject':
-            # Quick-remove (Delete Draft)
-            user = profile.user
-            profile.delete()
-            user.delete()
+            reason_select = request.POST.get('reason_select')
+            reason_text = request.POST.get('reason_text')
+            reason = reason_text if reason_select == 'Other' else reason_select
             
-        return redirect('onboarding:hr_verify')
-<<<<<<< HEAD
-=======
+            profile.onboarding_status = 'REJECTED'
+            profile.rejection_reason = reason
+            profile.save()
+            messages.warning(request, f"Rejected candidate {profile.user.first_name}. Reason: {reason}")
+            return redirect('onboarding:hr_verify_list')
 
+    candidates = InviteToken.objects.filter(is_used=False)
+    profiles = EmployeeProfile.objects.filter(onboarding_status='PENDING', is_active=False).select_related('user', 'department')
+    locked_profiles = EmployeeProfile.objects.filter(is_active=True).select_related('user', 'department')
+    
+    return render(request, 'onboarding/hr_verify.html', {
+        'candidates': candidates,
+        'profiles': profiles,
+        'locked_profiles': locked_profiles
+    })
 
+@login_required
+@user_passes_test(is_hr_or_md)
+def hr_verify_detail(request, candidate_id):
+    candidate = get_object_or_404(InviteToken, id=candidate_id)
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'approve':
+            candidate.status = 'APPROVED'
+            candidate.save()
+            # Logic to convert candidate to employee profile can go here
+            messages.success(request, f"Approved {candidate.full_name}")
+        elif action == 'reject':
+            candidate.status = 'REJECTED'
+            candidate.save()
+            messages.warning(request, f"Rejected {candidate.full_name}")
+        return redirect('onboarding:hr_verify_list')
+    return render(request, 'onboarding/hr_verify_detail.html', {'candidate': candidate})
 
-class ProfileUnlockView(HRRequiredMixin, View):
-    """HR/MD action: temporarily UNLOCK a verified profile so the employee
-    can re-upload a corrected document. Lock auto-restored after employee
-    re-uploads or after 24h (HR can manually re-lock from /hr/verify/).
-    """
-    def post(self, request, pk):
-        profile = get_object_or_404(EmployeeProfile, pk=pk)
-        action = request.POST.get('action', 'unlock')
+@login_required
+@user_passes_test(is_hr_or_md)
+def create_offer(request, profile_id):
+    from core.models import EmployeeProfile
+    from .forms import OfferLetterForm
+    profile = get_object_or_404(EmployeeProfile, id=profile_id)
+    
+    if request.method == 'POST':
+        form = OfferLetterForm(request.POST, instance=profile)
+        if form.is_valid():
+            form.save()
+            request.session[f'offer_duties_{profile.id}'] = form.cleaned_data['duties']
+            request.session[f'offer_probation_duration_{profile.id}'] = form.cleaned_data.get('probation_duration', '')
+            request.session[f'offer_additional_notes_{profile.id}'] = form.cleaned_data.get('additional_notes', '')
+            return redirect('onboarding:preview_offer', profile_id=profile.id)
+    else:
+        form = OfferLetterForm(instance=profile)
+    
+    return render(request, 'onboarding/create_offer.html', {'form': form, 'profile': profile})
+
+@login_required
+@user_passes_test(is_hr_or_md)
+def preview_offer(request, profile_id):
+    from core.models import EmployeeProfile
+    profile = get_object_or_404(EmployeeProfile, id=profile_id)
+    duties = request.session.get(f'offer_duties_{profile.id}', '')
+    probation_duration = request.session.get(f'offer_probation_duration_{profile.id}', '')
+    additional_notes = request.session.get(f'offer_additional_notes_{profile.id}', '')
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'send':
+            import re
+            from datetime import timedelta
+            
+            if profile.probation_status == 'PROBATION' and probation_duration:
+                months_match = re.search(r'(\d+)', probation_duration)
+                if months_match and profile.date_of_joining:
+                    months = int(months_match.group(1))
+                    profile.probation_end_date = profile.date_of_joining + timedelta(days=months*30)
+                elif profile.date_of_joining:
+                    profile.probation_end_date = profile.date_of_joining + timedelta(days=30)
+            elif profile.probation_status == 'PROBATION' and profile.date_of_joining:
+                profile.probation_end_date = profile.date_of_joining + timedelta(days=30)
+
+            profile.is_active = True
+            profile.is_locked = True
+            profile.onboarding_status = 'VERIFIED'
+            profile.user.is_active = True
+            profile.user.save()
+            profile.save()
+            
+            # Send Email
+            from twofa.emails import send_html_mail
+            try:
+                send_html_mail(
+                    subject="AEC Group - Official Appointment Letter",
+                    template_name="onboarding/email_offer.html",
+                    context={'profile': profile, 'duties': duties, 'probation_duration': probation_duration, 'additional_notes': additional_notes},
+                    to=[profile.user.email]
+                )
+                messages.success(request, f"Offer letter successfully sent to {profile.user.get_full_name()} and profile activated.")
+            except Exception as e:
+                messages.error(request, f"Profile activated, but failed to send email. Check SMTP settings.")
+            
+            return redirect('onboarding:hr_verify_list')
+        elif action == 'edit':
+            return redirect('onboarding:create_offer', profile_id=profile.id)
+            
+    return render(request, 'onboarding/preview_offer.html', {
+        'profile': profile, 
+        'duties': duties,
+        'probation_duration': probation_duration,
+        'additional_notes': additional_notes
+    })
+
+@login_required
+@user_passes_test(is_hr_or_md)
+def unlock_profile(request, profile_id):
+    from core.models import EmployeeProfile
+    profile = get_object_or_404(EmployeeProfile, id=profile_id)
+    if request.method == 'POST':
+        action = request.POST.get('action')
         if action == 'unlock':
             profile.is_locked = False
-            profile.save(update_fields=['is_locked'])
-            AuditLog.objects.create(
-                profile=profile, performed_by=request.user,
-                action=AuditLog.ActionType.PROFILE_UPDATED,
-                details={'unlocked': True, 'reason': request.POST.get('reason', '')},
-                ip_address=request.META.get('REMOTE_ADDR'),
-            )
+            messages.success(request, f"Unlocked {profile.user.first_name}'s profile for document re-upload.")
         elif action == 'relock':
             profile.is_locked = True
-            profile.save(update_fields=['is_locked'])
-            AuditLog.objects.create(
-                profile=profile, performed_by=request.user,
-                action=AuditLog.ActionType.PROFILE_LOCKED,
-                details={'relocked': True},
-                ip_address=request.META.get('REMOTE_ADDR'),
+            messages.success(request, f"Re-locked {profile.user.first_name}'s profile.")
+        profile.save()
+    return redirect('onboarding:hr_verify_list')
+
+def candidate_onboarding_form(request, token):
+    candidate = get_object_or_404(InviteToken, id=token)
+    
+    # Block resubmission - once used, no editing allowed
+    if candidate.is_used:
+        return render(request, 'onboarding/already_submitted.html', {'candidate': candidate})
+    
+    if request.method == 'POST':
+        form = CandidateOnboardingForm(request.POST, request.FILES)
+        if form.is_valid():
+            data = form.cleaned_data
+            from core.models import User, EmployeeProfile
+            from django.core.files.storage import default_storage
+            import uuid
+            
+            username = candidate.email.split('@')[0]
+            base_username = username
+            counter = 1
+            while User.objects.filter(username=username).exists():
+                username = f"{base_username}{counter}"
+                counter += 1
+                
+            user = User.objects.create(
+                username=username,
+                email=candidate.email,
+                first_name=data['first_name'],
+                last_name=data['last_name'],
+                phone=data['phone'],
+                profile_picture=data['profile_pic'],
+                is_active=False
             )
-        return redirect('onboarding:hr_verify')
->>>>>>> origin/conflict_080526_1642
+            user.set_password(str(uuid.uuid4()))
+            user.save()
+
+            docs_vault = {}
+            for doc_field in ['academic_doc', 'id_proof', 'exp_letter', 'salary_slips']:
+                file_obj = data.get(doc_field)
+                if file_obj:
+                    path = default_storage.save(f"vault/{user.username}/{file_obj.name}", file_obj)
+                    docs_vault[doc_field] = {
+                        'url': default_storage.url(path),
+                        'verified': False
+                    }
+
+            profile = EmployeeProfile.objects.create(
+                user=user,
+                department=candidate.department,
+                personal_account=data['personal_account'],
+                aadhaar_masked='X'*8 + data['aadhaar'][-4:],
+                docs_vault=docs_vault,
+                is_locked=True,   # Immediately lock after submission
+                is_active=False
+            )
+
+            candidate.profile = profile
+            candidate.is_used = True
+            candidate.save()
+            return redirect('onboarding:onboarding_success')
+    else:
+        form = CandidateOnboardingForm()
+    return render(request, 'onboarding/candidate_form.html', {'form': form, 'candidate': candidate})
+
+def onboarding_success(request):
+    return render(request, 'onboarding/success.html')
+
+@login_required
+@user_passes_test(is_hr_or_md)
+def onboarding_dashboard(request):
+    from core.models import EmployeeProfile
+
+    verified_candidates = EmployeeProfile.objects.filter(onboarding_status='VERIFIED').select_related('user', 'department')
+    rejected_candidates = EmployeeProfile.objects.filter(onboarding_status='REJECTED').select_related('user', 'department')
+
+    # Candidates who submitted the onboarding form and are waiting for HR review
+    verification_requests = EmployeeProfile.objects.filter(
+        onboarding_status='PENDING',
+        is_active=False,
+    ).select_related('user', 'department')
+
+    pending_count = verification_requests.count()
+
+    probation_staff = EmployeeProfile.objects.filter(probation_status='PROBATION', is_active=True).select_related('user', 'department')
+    permanent_staff = EmployeeProfile.objects.filter(probation_status='PERMANENT', is_active=True).select_related('user', 'department')
+    terminated_staff = EmployeeProfile.objects.filter(probation_status='TERMINATED').select_related('user', 'department')
+
+    from datetime import timedelta
+    from django.utils import timezone
+    today = timezone.now().date()
+    seven_days = today + timedelta(days=7)
+    
+    probation_alerts = EmployeeProfile.objects.filter(
+        probation_status='PROBATION',
+        is_active=True,
+        probation_end_date__lte=seven_days,
+        probation_end_date__gte=today
+    ).select_related('user', 'department')
+
+    return render(request, 'onboarding/dashboard.html', {
+        'verified_candidates': verified_candidates,
+        'rejected_candidates': rejected_candidates,
+        'verification_requests': verification_requests,
+        'pending_count': pending_count,
+        'probation_staff': probation_staff,
+        'permanent_staff': permanent_staff,
+        'terminated_staff': terminated_staff,
+        'probation_alerts': probation_alerts,
+    })
+
+@login_required
+@user_passes_test(is_hr_or_md)
+def quick_terminate(request, profile_id):
+    from core.models import EmployeeProfile
+    profile = get_object_or_404(EmployeeProfile, id=profile_id)
+    if request.method == 'POST':
+        profile.probation_status = 'TERMINATED'
+        profile.is_active = False
+        profile.user.is_active = False
+        profile.user.save()
+        profile.save()
+        messages.success(request, f"{profile.user.get_full_name()} has been marked as Terminated.")
+    return redirect('onboarding:onboarding_dashboard')
+
+@login_required
+def confirm_permanency(request, profile_id):
+    from core.models import EmployeeProfile
+    profile = get_object_or_404(EmployeeProfile, id=profile_id)
+    if request.method == 'POST':
+        profile.probation_status = 'PERMANENT'
+        profile.save()
+        messages.success(request, f"{profile.user.get_full_name()} is now a Permanent Employee!")
+    return redirect('onboarding:onboarding_dashboard')

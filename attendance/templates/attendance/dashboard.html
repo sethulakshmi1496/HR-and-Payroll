@@ -1,43 +1,106 @@
 {% extends 'onboarding/base.html' %}
 
-{% block title %}Attendance Dashboard - AEC Group{% endblock %}
+{% block title %}Attendance {% if request.user.role == 'MD' %}Report{% else %}Dashboard{% endif %} - AEC Group{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<<<<<<< HEAD
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-<div class="mb-8">
-    <h1 class="text-2xl font-bold text-slate-900">Attendance Dashboard</h1>
-    <p class="text-slate-500 text-sm mt-1">{% if is_manager %}Overview of today's attendance across all departments.{% else %}Your recent attendance history.{% endif %}</p>
+{% if request.user.role == 'MD' %}
+{# ══════════════════════════════════════════════════════════════════ #}
+{#  MD VIEW — Graph + Attendance Table only. No Clock-In, No Map.   #}
+{# ══════════════════════════════════════════════════════════════════ #}
+
+<!-- Header -->
+<div class="mb-6">
+    <h1 class="text-3xl font-bold text-slate-900">Attendance Report</h1>
+    <p class="text-slate-500 text-sm mt-1">Today's attendance across all departments.</p>
 </div>
 
-{% if is_manager %}
-<!-- Heatmap / Live Map for Managers -->
-<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
-    <div class="p-5 border-b border-slate-100">
-        <h3 class="font-semibold text-slate-900">Live Locations</h3>
+<p class="text-xs text-slate-500 mb-4">
+    Auto-refresh every 30s · Last update: <span id="live-stamp" data-testid="live-stamp">{% now "H:i:s" %}</span>
+</p>
+
+<!-- Department Presence Graph (full width) -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8" data-testid="heatmap-card">
+    <h3 class="font-semibold text-slate-900 mb-4">Today — Department Presence</h3>
+    <canvas id="heatmapChart" height="90"></canvas>
+</div>
+
+<!-- Attendance Report Table -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="px-5 py-4 border-b border-slate-100">
+        <h3 class="font-semibold text-slate-900">Attendance Records</h3>
     </div>
-    <div id="dashboard-map" class="h-96 w-full z-0"></div>
-=======
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm" data-testid="attendance-table">
+            <thead>
+                <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <th class="p-4">Employee</th>
+                    <th class="p-4">Date</th>
+                    <th class="p-4">In</th>
+                    <th class="p-4">Out</th>
+                    <th class="p-4">Location</th>
+                    <th class="p-4">Source</th>
+                    <th class="p-4">Status</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for record in attendances %}
+                <tr class="hover:bg-slate-50">
+                    <td class="p-4">
+                        <div class="font-medium text-slate-900">
+                            {{ record.profile.user.first_name }} {{ record.profile.user.last_name }}{% if not record.profile.user.first_name %}{{ record.profile.user.username }}{% endif %}
+                        </div>
+                        <div class="text-xs text-slate-500">{{ record.profile.department.name }} — {{ record.profile.user.get_role_display }}</div>
+                    </td>
+                    <td class="p-4 text-slate-700">{{ record.date }}</td>
+                    <td class="p-4 text-slate-700">{{ record.in_time|time:"H:i"|default:"-" }}</td>
+                    <td class="p-4 text-slate-700">{{ record.out_time|time:"H:i"|default:"-" }}</td>
+                    <td class="p-4 text-slate-700 text-xs">{{ record.location_name|default:record.profile.department.name }}</td>
+                    <td class="p-4 text-slate-500 text-xs">{{ record.get_source_display }}</td>
+                    <td class="p-4">
+                        {% if record.is_valid %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Valid</span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Invalid</span>
+                        {% endif %}
+                        {% if record.is_late %}
+                        <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Late ({{ record.late_minutes }}m)</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="p-8 text-center text-slate-500">No attendance records found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% else %}
+{# ══════════════════════════════════════════════════════════════════ #}
+{#  HR / STAFF / DEPT_HEAD — Full Attendance Dashboard               #}
+{# ══════════════════════════════════════════════════════════════════ #}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
     <div>
         <h1 class="text-3xl font-bold text-slate-900">Attendance Dashboard</h1>
-        <p class="text-slate-500 text-sm mt-1">{% if is_manager %}Today's attendance across all departments.{% else %}Your recent attendance history.{% endif %}</p>
+        <p class="text-slate-500 text-sm mt-1">
+            {% if is_manager %}Today's attendance across all departments.{% else %}Your recent attendance history.{% endif %}
+        </p>
     </div>
-    <a href="{% url 'attendance:clock' %}" class="px-5 py-2.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700" data-testid="goto-clock">
+    <a href="{% url 'attendance:clock' %}"
+        class="px-5 py-2.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700" data-testid="goto-clock">
         Clock In / Out →
     </a>
 </div>
 
 {% if is_manager %}
 <p class="text-xs text-slate-500 mb-3">Auto-refresh every 30s · Last update: <span id="live-stamp" data-testid="live-stamp">{% now "H:i:s" %}</span></p>
-{% endif %}
 
-{% if is_manager %}
-<!-- Department Heatmap -->
+<!-- Department Heatmap + Live Map -->
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
     <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-5" data-testid="heatmap-card">
         <h3 class="font-semibold text-slate-900 mb-4">Today — Department Presence</h3>
@@ -49,29 +112,20 @@
         </div>
         <div id="dashboard-map" class="h-72 w-full z-0"></div>
     </div>
->>>>>>> origin/conflict_080526_1642
 </div>
 {% endif %}
 
 <!-- History Table -->
 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
     <div class="overflow-x-auto">
-<<<<<<< HEAD
-        <table class="w-full text-left border-collapse">
-=======
         <table class="w-full text-left border-collapse" data-testid="attendance-table">
->>>>>>> origin/conflict_080526_1642
             <thead>
                 <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     {% if is_manager %}<th class="p-4">Employee</th>{% endif %}
                     <th class="p-4">Date</th>
-<<<<<<< HEAD
-                    <th class="p-4">In Time</th>
-                    <th class="p-4">Out Time</th>
-=======
                     <th class="p-4">In</th>
                     <th class="p-4">Out</th>
->>>>>>> origin/conflict_080526_1642
+                    <th class="p-4">Location</th>
                     <th class="p-4">Source</th>
                     <th class="p-4">Status</th>
                 </tr>
@@ -80,69 +134,51 @@
                 {% for record in attendances %}
                 <tr class="hover:bg-slate-50">
                     {% if is_manager %}
-                    <td class="p-4 font-medium text-slate-900">{{ record.profile.user.get_full_name }} <span class="text-xs text-slate-500 block">{{ record.profile.department.code }}</span></td>
+                    <td class="p-4 font-medium text-slate-900">
+                        {{ record.profile.user.first_name }} {{ record.profile.user.last_name }} {% if not record.profile.user.first_name %}{{ record.profile.user.username }}{% endif %}
+                        <span class="text-xs text-slate-500 block">{{ record.profile.department.name }} — {{ record.profile.user.get_role_display }}</span>
+                    </td>
                     {% endif %}
                     <td class="p-4 text-slate-700">{{ record.date }}</td>
-<<<<<<< HEAD
-                    <td class="p-4 text-slate-700">{{ record.in_time|time:"H:i A"|default:"-" }}</td>
-                    <td class="p-4 text-slate-700">{{ record.out_time|time:"H:i A"|default:"-" }}</td>
-=======
                     <td class="p-4 text-slate-700">{{ record.in_time|time:"H:i"|default:"-" }}</td>
                     <td class="p-4 text-slate-700">{{ record.out_time|time:"H:i"|default:"-" }}</td>
->>>>>>> origin/conflict_080526_1642
+                    <td class="p-4 text-slate-700 text-xs">{{ record.location_name|default:record.profile.department.name }}</td>
                     <td class="p-4 text-slate-500 text-xs">{{ record.get_source_display }}</td>
                     <td class="p-4">
                         {% if record.is_valid %}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Valid</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Valid</span>
                         {% else %}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Invalid</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Invalid</span>
                         {% endif %}
-<<<<<<< HEAD
-                        
-=======
->>>>>>> origin/conflict_080526_1642
                         {% if record.is_late %}
-                            <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Late ({{ record.late_minutes }}m)</span>
+                        <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Late ({{ record.late_minutes }}m)</span>
                         {% endif %}
                     </td>
                 </tr>
                 {% empty %}
-<<<<<<< HEAD
                 <tr>
-                    <td colspan="6" class="p-8 text-center text-slate-500">No attendance records found.</td>
+                    <td colspan="7" class="p-8 text-center text-slate-500">No attendance records found.</td>
                 </tr>
-=======
-                <tr><td colspan="6" class="p-8 text-center text-slate-500">No attendance records found.</td></tr>
->>>>>>> origin/conflict_080526_1642
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
+{% endif %}
 
-{% if is_manager %}
+{# ── Chart + Map JS (shared for both MD graph and HR full dashboard) ── #}
+{% if is_manager or request.user.role == 'MD' %}
+{{ heatmap_labels|json_script:"heatmap-labels" }}
+{{ heatmap_present|json_script:"heatmap-present" }}
+{{ heatmap_total|json_script:"heatmap-total" }}
 <script>
-<<<<<<< HEAD
-    // Manager Map Implementation
-    const map = L.map('dashboard-map').setView([9.931233, 76.267303], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-    {% for record in attendances %}
-        {% if record.gps_latitude and record.gps_longitude %}
-            L.marker([{{ record.gps_latitude }}, {{ record.gps_longitude }}])
-                .bindPopup("<b>{{ record.profile.user.get_full_name }}</b><br>In: {{ record.in_time|time:'H:i A' }}")
-                .addTo(map);
-        {% endif %}
-    {% endfor %}
-=======
-(function() {
-    let heatmapChart, dashboardMap;
+(function () {
+    let heatmapChart;
     const palette = (r) => r >= 80 ? '#10b981' : r >= 50 ? '#f59e0b' : '#ef4444';
 
-    // Initial render from server-side context
-    let initLabels = {{ heatmap_labels|safe }};
-    let initPresent = {{ heatmap_present|safe }};
-    let initTotal = {{ heatmap_total|safe }};
+    let initLabels  = JSON.parse(document.getElementById('heatmap-labels').textContent);
+    let initPresent = JSON.parse(document.getElementById('heatmap-present').textContent);
+    let initTotal   = JSON.parse(document.getElementById('heatmap-total').textContent);
 
     const renderHeatmap = (labels, present, total) => {
         const ratios = present.map((p, i) => total[i] ? Math.round(p * 100 / total[i]) : 0);
@@ -161,10 +197,11 @@
         });
     };
 
-    dashboardMap = L.map('dashboard-map').setView([9.931233, 76.267303], 12);
+    {% if request.user.role != 'MD' %}
+    // Live map — HR/staff only
+    const dashboardMap = L.map('dashboard-map').setView([9.931233, 76.267303], 12);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(dashboardMap);
     let mapMarkers = [];
-
     const renderMarkers = (markers) => {
         mapMarkers.forEach(m => dashboardMap.removeLayer(m));
         mapMarkers = [];
@@ -177,27 +214,27 @@
             }
         });
     };
+    {% endif %}
 
     renderHeatmap(initLabels, initPresent, initTotal);
 
-    // Poll every 30s for live updates
     const refresh = async () => {
         try {
             const res = await fetch("{% url 'attendance:live' %}", { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
             if (!res.ok) return;
             const data = await res.json();
             renderHeatmap(data.labels, data.present, data.total);
+            {% if request.user.role != 'MD' %}
             renderMarkers(data.markers);
+            {% endif %}
             const stamp = document.getElementById('live-stamp');
             if (stamp) stamp.textContent = new Date(data.as_of).toLocaleTimeString();
         } catch (e) { console.error('live poll failed', e); }
     };
     setInterval(refresh, 30000);
-
-    // Initial markers from server-rendered table (fallback)
     refresh();
 })();
->>>>>>> origin/conflict_080526_1642
 </script>
 {% endif %}
+
 {% endblock %}

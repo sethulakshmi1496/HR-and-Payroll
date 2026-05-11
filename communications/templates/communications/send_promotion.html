@@ -1,0 +1,41 @@
+{% extends 'onboarding/base.html' %}
+{% block title %}Send Promotion Letter - AEC Group{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+    <div class="mb-8 border-b border-slate-100 pb-4">
+        <h2 class="text-2xl font-bold text-slate-900">Send Promotion Letter</h2>
+        <p class="text-slate-500 text-sm mt-1">Generate and email an official promotion letter. This automatically updates their profile and saves a copy to their document vault.</p>
+    </div>
+
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+        <div>
+            <label class="block text-sm font-medium text-slate-700">Select Employee</label>
+            {{ form.employee }}
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label class="block text-sm font-medium text-slate-700">New Designation</label>
+                {{ form.new_designation }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700">New Base Salary (₹)</label>
+                {{ form.new_salary }}
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-slate-700">Effective Date</label>
+            {{ form.effective_date }}
+        </div>
+
+        <div class="pt-4 flex justify-end">
+            <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm shadow-sm transition">
+                Send Promotion Letter
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

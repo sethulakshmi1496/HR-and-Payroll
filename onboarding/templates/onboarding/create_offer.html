@@ -1,0 +1,61 @@
+{% extends 'onboarding/base.html' %}
+{% block title %}Draft Offer Letter - AEC Group{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+    <div class="mb-8 border-b border-slate-100 pb-4">
+        <h2 class="text-2xl font-bold text-slate-900">Draft Offer Letter</h2>
+        <p class="text-slate-500 text-sm mt-1">Configure employment terms for <strong>{{ profile.user.get_full_name }}</strong> before finalizing their onboarding.</p>
+    </div>
+
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label class="block text-sm font-medium text-slate-700">Job Position</label>
+                {{ form.designation }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700">Probation Status</label>
+                {{ form.probation_status }}
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label class="block text-sm font-medium text-slate-700">Monthly Base Salary (₹)</label>
+                {{ form.basic_salary }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700">Date of Joining</label>
+                {{ form.date_of_joining }}
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label class="block text-sm font-medium text-slate-700">Probation Duration</label>
+                {{ form.probation_duration }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700">Additional HR Messages</label>
+                {{ form.additional_notes }}
+                <p class="text-xs text-slate-400 mt-1">e.g., Performance criteria for permanent status.</p>
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-slate-700">Key Duties & Responsibilities</label>
+            {{ form.duties }}
+            <p class="text-xs text-slate-400 mt-1">This will be prominently displayed in their official offer letter.</p>
+        </div>
+
+        <div class="pt-4 flex justify-end space-x-3">
+            <a href="{% url 'onboarding:hr_verify_list' %}" class="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-medium text-sm transition">Cancel</a>
+            <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm shadow-sm transition">
+                Generate Preview
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

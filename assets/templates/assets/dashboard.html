@@ -3,6 +3,100 @@
 {% block title %}{% trans "Assets & NOC" %} - AEC Group{% endblock %}
 
 {% block content %}
+
+{% if request.user.role == 'MD' %}
+{# ══════════════════════════════════════════════════════════════════ #}
+{#  MD VIEW — Read-only: Issued Assets + NOC Report only             #}
+{# ══════════════════════════════════════════════════════════════════ #}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-slate-900">Assets & NOC Report</h1>
+    <p class="text-slate-500 mt-1">Overview of all issued assets and NOC certificates.</p>
+</div>
+
+<!-- Issued Assets Report -->
+<div class="bg-white rounded-xl border border-slate-200 overflow-hidden mb-8">
+    <div class="px-5 py-4 border-b border-slate-100">
+        <h3 class="font-semibold text-slate-900">{% trans "Issued Assets" %}</h3>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm" data-testid="assets-table">
+            <thead class="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <tr>
+                    <th class="p-3 text-left">{% trans "Employee" %}</th>
+                    <th class="p-3 text-left">{% trans "Department" %}</th>
+                    <th class="p-3 text-left">{% trans "Type" %}</th>
+                    <th class="p-3 text-left">{% trans "Label" %}</th>
+                    <th class="p-3 text-left">{% trans "Issued Date" %}</th>
+                    <th class="p-3 text-left">{% trans "Status" %}</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for a in assets %}
+                <tr class="hover:bg-slate-50">
+                    <td class="p-3">
+                        <div class="font-medium text-slate-900">{{ a.profile.user.get_full_name }}</div>
+                        <div class="text-xs text-slate-400">{{ a.profile.employee_id }}</div>
+                    </td>
+                    <td class="p-3 text-slate-600">{{ a.profile.department.name }}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-slate-100">{{ a.get_asset_type_display }}</span></td>
+                    <td class="p-3 font-medium text-slate-900">{{ a.label }}</td>
+                    <td class="p-3 text-slate-600">{{ a.issued_date }}</td>
+                    <td class="p-3">
+                        {% if a.status == 'ISSUED' %}<span class="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-800">{% trans "Issued" %}</span>
+                        {% elif a.status == 'RETURNED' %}<span class="px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-800">{% trans "Returned" %}</span>
+                        {% elif a.status == 'LOST' %}<span class="px-2 py-0.5 rounded text-xs bg-red-100 text-red-800">{% trans "Lost" %}</span>{% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="p-8 text-center text-slate-400 text-sm">No assets issued.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- NOC Certificates Report -->
+<div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+    <div class="px-5 py-4 border-b border-slate-100">
+        <h3 class="font-semibold text-slate-900">{% trans "NOC Certificates" %}</h3>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm" data-testid="noc-table">
+            <thead class="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <tr>
+                    <th class="p-3 text-left">{% trans "Employee" %}</th>
+                    <th class="p-3 text-left">{% trans "Department" %}</th>
+                    <th class="p-3 text-left">{% trans "Purpose" %}</th>
+                    <th class="p-3 text-left">{% trans "Status" %}</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for n in nocs %}
+                <tr class="hover:bg-slate-50">
+                    <td class="p-3">
+                        <div class="font-medium text-slate-900">{{ n.profile.user.get_full_name }}</div>
+                        <div class="text-xs text-slate-400">{{ n.profile.employee_id }}</div>
+                    </td>
+                    <td class="p-3 text-slate-600">{{ n.profile.department.name }}</td>
+                    <td class="p-3 text-slate-600">{{ n.purpose }}</td>
+                    <td class="p-3">
+                        {% if n.status == 'ISSUED' %}<span class="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">{% trans "Awaiting Signature" %}</span>
+                        {% elif n.status == 'SIGNED' %}<span class="px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-800">{% trans "Signed" %}</span>
+                        {% elif n.status == 'CLOSED' %}<span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">{% trans "Closed" %}</span>{% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="p-8 text-center text-slate-400 text-sm">No NOC certificates issued.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% else %}
+{# ══════════════════════════════════════════════════════════════════ #}
+{#  HR / STAFF / DEPT_HEAD — Full Assets & NOC Management            #}
+{# ══════════════════════════════════════════════════════════════════ #}
 <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
     <div>
         <h1 class="text-3xl font-bold text-slate-900">{% trans "Assets & NOC" %}</h1>
@@ -135,4 +229,6 @@
         </table>
     </div>
 </div>
+{% endif %}
+
 {% endblock %}

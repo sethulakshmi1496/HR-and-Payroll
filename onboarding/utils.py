@@ -4,7 +4,24 @@ from django.conf import settings
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib import colors
+from django.urls import reverse
 
+def send_onboarding_email(candidate):
+    """Sends onboarding email to candidate with unique link."""
+    # Assuming twofa.emails.send_html_mail is available
+    try:
+        from twofa.emails import send_html_mail
+        link = f"http://127.0.0.1:8000{reverse('onboarding:candidate_form', kwargs={'token': candidate.id})}"
+        send_html_mail(
+            subject="AEC Group - Onboarding Invitation",
+            template_name="onboarding/email_invite.html", # Optional if template doesn't exist it might fail, fallback:
+            context={'candidate': candidate, 'link': link},
+            to=[candidate.email]
+        )
+        return True
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+        return False
 def generate_official_joining_letter(profile):
     """
     Generates a PDF official joining letter for the employee.
