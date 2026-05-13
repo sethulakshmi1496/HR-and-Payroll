@@ -1,0 +1,81 @@
+{% load i18n static %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:'en' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AEC HR SuperApp{% endblock %}</title>
+
+    <script>
+        (function() { try {
+            var t = localStorage.getItem('aec_theme') || 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        } catch(e) {} })();
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' };</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Malayalam:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/zoho.css' %}">
+
+    <style>
+        body.md-readonly form:not([data-allow-md]) { display: none !important; }
+        body.md-readonly button[type="submit"]:not([data-allow-md]) { display: none !important; }
+        body.md-readonly a.action-btn { display: none !important; }
+        body.md-readonly [data-md-hide] { display: none !important; }
+        body.md-readonly form[data-allow-md] { display: inline !important; }
+    </style>
+</head>
+<body class="antialiased zh-public-body">
+    <div class="zh-public">
+        <div class="w-full" style="max-width:440px;">
+            <div class="zh-public-brand">
+                <div class="zh-brand-mark" style="width:48px;height:48px;font-size:17px;border-radius:14px;">AE</div>
+                <div style="text-align:center;">
+                    <div style="font-size:18px;font-weight:700;color:var(--text-strong);letter-spacing:-.01em;">AEC Group</div>
+                    <div style="font-size:11px;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;font-weight:600;">HR SuperApp</div>
+                </div>
+            </div>
+
+            {% if messages %}
+            <div class="mb-4 space-y-2">
+                {% for message in messages %}
+                <div class="p-3 rounded-lg text-sm border {% if message.tags == 'success' %}bg-green-50 text-green-800 border-green-200{% elif message.tags == 'error' %}bg-red-50 text-red-800 border-red-200{% elif message.tags == 'warning' %}bg-yellow-50 text-yellow-800 border-yellow-200{% else %}bg-blue-50 text-blue-800 border-blue-200{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+
+            <div class="mt-6 flex items-center justify-between text-xs" style="color:var(--text-muted);">
+                <form action="{% url 'set_language' %}" method="post" class="inline-flex items-center gap-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.path }}">
+                    <select name="language" onchange="this.form.submit()" class="rounded-md px-2 py-1" style="background:var(--surface); border:1px solid var(--border); color:var(--text); font-size:11px;">
+                        {% get_current_language as LANGUAGE_CODE %}
+                        <option value="en" {% if LANGUAGE_CODE == 'en' %}selected{% endif %}>English</option>
+                        <option value="ml" {% if LANGUAGE_CODE == 'ml' %}selected{% endif %}>മലയാളം</option>
+                    </select>
+                </form>
+                <button onclick="zhToggleTheme()" class="inline-flex items-center gap-2 px-3 py-1 rounded-md" style="background:var(--surface);border:1px solid var(--border);" data-testid="theme-toggle-public">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    <span>{% trans "Theme" %}</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function zhToggleTheme() {
+            var cur = document.documentElement.getAttribute('data-theme') || 'light';
+            var next = cur === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            try { localStorage.setItem('aec_theme', next); } catch(e) {}
+        }
+    </script>
+</body>
+</html>
