@@ -1,0 +1,350 @@
+{% extends 'onboarding/base.html' %}
+{% block title %}Add New Staff — AEC HR SuperApp{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+
+    <!-- Header -->
+    <div class="mb-8 flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900">Add New Staff</h1>
+            <p class="text-slate-500 mt-1">Fill in all personal and professional details to register a new employee.</p>
+        </div>
+        <a href="{% url 'onboarding:staff_directory' %}" class="text-sm text-slate-500 hover:text-slate-800">
+            ← Staff Directory
+        </a>
+    </div>
+
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+        {% for m in messages %}
+        <div class="p-3 rounded-lg text-sm bg-red-50 border border-red-200 text-red-800">{{ m }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" class="space-y-8">
+        {% csrf_token %}
+
+        <!-- SECTION 1: Personal Information -->
+        <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+            <h2 class="text-base font-bold text-slate-800 mb-5 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-violet-100 text-violet-700 text-xs flex items-center justify-center font-bold">1</span>
+                Personal Information
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">First Name <span class="text-red-500">*</span></label>
+                    <input type="text" name="first_name" value="{{ post.first_name }}"
+                           class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Last Name <span class="text-red-500">*</span></label>
+                    <input type="text" name="last_name" value="{{ post.last_name }}"
+                           class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Email <span class="text-red-500">*</span></label>
+                    <input type="email" name="email" value="{{ post.email }}"
+                           class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Phone</label>
+                    <input type="tel" name="phone" value="{{ post.phone }}"
+                           class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Date of Birth</label>
+                    <input type="date" name="date_of_birth" value="{{ post.date_of_birth }}"
+                           class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Gender</label>
+                    <select name="gender" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent">
+                        <option value="">— Select —</option>
+                        <option value="Male"   {% if post.gender == 'Male' %}selected{% endif %}>Male</option>
+                        <option value="Female" {% if post.gender == 'Female' %}selected{% endif %}>Female</option>
+                        <option value="Other"  {% if post.gender == 'Other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Residential Address</label>
+                    <textarea name="address" rows="2"
+                              class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent">{{ post.address }}</textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">
+                        Aadhaar (masked)
+                        <span class="text-slate-400 font-normal ml-1">XXXXXXXX1234</span>
+                    </label>
+                    <input type="text" name="aadhaar_masked" value="{{ post.aadhaar_masked }}"
+                           maxlength="12" placeholder="XXXXXXXX1234"
+                           class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent">
+                </div>
+                <!-- Profile Photo -->
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Profile Photo</label>
+                    <div class="flex items-center gap-4">
+                        <div id="photo-preview"
+                             class="w-16 h-16 rounded-xl bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 overflow-hidden flex-shrink-0">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <input type="file" name="profile_picture" id="profile_picture" accept="image/*"
+                                   class="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100 cursor-pointer">
+                            <p class="text-xs text-slate-400 mt-1">JPG, PNG or WEBP — max 5MB. Used as the employee's avatar across the system.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 2: Emergency Contact -->
+        <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+            <h2 class="text-base font-bold text-slate-800 mb-5 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-rose-100 text-rose-700 text-xs flex items-center justify-center font-bold">2</span>
+                Emergency Contact
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Contact Name</label>
+                    <input type="text" name="emergency_contact_name" value="{{ post.emergency_contact_name }}"
+                           class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Relationship</label>
+                    <select name="emergency_contact_rel" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 focus:border-transparent">
+                        <option value="">— Select —</option>
+                        <option value="Spouse"  {% if post.emergency_contact_rel == 'Spouse'  %}selected{% endif %}>Spouse</option>
+                        <option value="Parent"  {% if post.emergency_contact_rel == 'Parent'  %}selected{% endif %}>Parent</option>
+                        <option value="Sibling" {% if post.emergency_contact_rel == 'Sibling' %}selected{% endif %}>Sibling</option>
+                        <option value="Child"   {% if post.emergency_contact_rel == 'Child'   %}selected{% endif %}>Child</option>
+                        <option value="Friend"  {% if post.emergency_contact_rel == 'Friend'  %}selected{% endif %}>Friend</option>
+                        <option value="Other"   {% if post.emergency_contact_rel == 'Other'   %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Phone</label>
+                    <input type="tel" name="emergency_contact_phone" value="{{ post.emergency_contact_phone }}"
+                           class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 focus:border-transparent">
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 3: Professional Details -->
+        <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+            <h2 class="text-base font-bold text-slate-800 mb-5 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs flex items-center justify-center font-bold">3</span>
+                Professional Details
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Department <span class="text-red-500">*</span></label>
+                    <select name="department" required
+                            class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent">
+                        <option value="">— Select Department —</option>
+                        {% for dept in departments %}
+                        <option value="{{ dept.pk }}" {% if post.department == dept.pk|stringformat:"s" %}selected{% endif %}>
+                            {{ dept.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Designation</label>
+                    <input type="text" name="designation" value="{{ post.designation }}"
+                           placeholder="e.g. Senior Executive"
+                           class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Date of Joining</label>
+                    <input type="date" name="date_of_joining" value="{{ post.date_of_joining }}"
+                           class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Employment Status</label>
+                    <select name="probation_status"
+                            class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent">
+                        <option value="PROBATION" {% if post.probation_status != 'PERMANENT' %}selected{% endif %}>Probation</option>
+                        <option value="PERMANENT" {% if post.probation_status == 'PERMANENT' %}selected{% endif %}>Permanent</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Basic Salary (₹/month)</label>
+                    <input type="number" name="basic_salary" value="{{ post.basic_salary|default:'0' }}"
+                           min="0" step="100"
+                           class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent">
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 4: Bank Details -->
+        <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+            <h2 class="text-base font-bold text-slate-800 mb-5 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs flex items-center justify-center font-bold">4</span>
+                Bank Details
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Personal Bank Account No.</label>
+                    <input type="text" name="personal_account" value="{{ post.personal_account }}"
+                           class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Salary Bank Account No.</label>
+                    <input type="text" name="salary_account" value="{{ post.salary_account }}"
+                           class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent">
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 5: Assignment & Reporting -->
+        <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+            <h2 class="text-base font-bold text-slate-800 mb-1 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-violet-100 text-violet-700 text-xs flex items-center justify-center font-bold">5</span>
+                Assignment &amp; Reporting
+            </h2>
+            <p class="text-xs text-slate-500 mb-5">Select the Reporting Manager responsible for this employee's leave approvals and performance reviews. Any active staff member can be assigned, regardless of their title.</p>
+
+            <input type="hidden" name="reporting_manager_id" id="reporting_manager_id" value="">
+
+            <!-- Search box -->
+            <div class="relative max-w-md" id="manager-search-wrap">
+                <label class="block text-xs font-semibold text-slate-600 mb-1.5">Reporting Manager</label>
+                <div class="relative">
+                    <input type="text" id="manager-search-input" autocomplete="off"
+                           placeholder="Search by name or designation…"
+                           class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm pr-10 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent">
+                    <span id="manager-clear-btn" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 cursor-pointer hidden text-base leading-none">✕</span>
+                </div>
+
+                <!-- Selected preview badge -->
+                <div id="manager-selected-badge" class="hidden mt-2 inline-flex items-center gap-2 bg-violet-50 border border-violet-200 rounded-full px-3 py-1 text-xs font-medium text-violet-800">
+                    <span id="manager-selected-name"></span>
+                    <span class="text-violet-400">·</span>
+                    <span id="manager-selected-desig" class="text-violet-600"></span>
+                </div>
+
+                <!-- Dropdown -->
+                <ul id="manager-dropdown"
+                    class="hidden absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg max-h-56 overflow-y-auto text-sm">
+                </ul>
+                <p id="manager-error" class="hidden mt-1 text-xs text-red-600 font-medium"></p>
+            </div>
+
+            <!-- Hidden employee data for JS -->
+            <script id="employee-data" type="application/json">
+            [{% for emp in active_employees %}{"id":{{ emp.pk }},"name":"{{ emp.user.get_full_name|escapejs }}","desig":"{{ emp.designation|escapejs }}","dept":"{{ emp.department.name|escapejs }}","emp_id":"{{ emp.employee_id|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]
+            </script>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="flex items-center justify-end gap-3 pb-10">
+            <a href="{% url 'onboarding:staff_directory' %}"
+               class="px-5 py-2.5 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition">
+                Cancel
+            </a>
+            <button type="submit" name="action" value="save"
+                    class="px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-lg shadow-sm transition">
+                Save Staff Member
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+(function () {
+    const employees = JSON.parse(document.getElementById('employee-data').textContent);
+    const input     = document.getElementById('manager-search-input');
+    const dropdown  = document.getElementById('manager-dropdown');
+    const hiddenId  = document.getElementById('reporting_manager_id');
+    const badge     = document.getElementById('manager-selected-badge');
+    const badgeName = document.getElementById('manager-selected-name');
+    const badgeDesig= document.getElementById('manager-selected-desig');
+    const clearBtn  = document.getElementById('manager-clear-btn');
+    const errEl     = document.getElementById('manager-error');
+
+    function showDropdown(q) {
+        const q2 = q.toLowerCase();
+        const matches = employees.filter(e =>
+            e.name.toLowerCase().includes(q2) ||
+            (e.desig && e.desig.toLowerCase().includes(q2)) ||
+            (e.emp_id && e.emp_id.toLowerCase().includes(q2))
+        ).slice(0, 10);
+
+        dropdown.innerHTML = '';
+        if (!matches.length) {
+            dropdown.innerHTML = '<li class="px-4 py-3 text-slate-400 text-xs">No matching employees found</li>';
+        } else {
+            matches.forEach(e => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center justify-between px-4 py-2.5 hover:bg-violet-50 cursor-pointer transition';
+                li.innerHTML = `
+                    <div>
+                        <p class="font-medium text-slate-800">${e.name}</p>
+                        <p class="text-xs text-slate-500">${e.desig || '—'} · ${e.dept}</p>
+                    </div>
+                    <span class="text-xs text-slate-400 font-mono">${e.emp_id}</span>`;
+                li.addEventListener('click', () => selectEmployee(e));
+                dropdown.appendChild(li);
+            });
+        }
+        dropdown.classList.remove('hidden');
+    }
+
+    function selectEmployee(e) {
+        hiddenId.value   = e.id;
+        input.value      = e.name;
+        badgeName.textContent  = e.name;
+        badgeDesig.textContent = e.desig || e.dept;
+        badge.classList.remove('hidden');
+        clearBtn.classList.remove('hidden');
+        dropdown.classList.add('hidden');
+        errEl.classList.add('hidden');
+    }
+
+    function clearSelection() {
+        hiddenId.value = '';
+        input.value    = '';
+        badge.classList.add('hidden');
+        clearBtn.classList.add('hidden');
+        errEl.classList.add('hidden');
+    }
+
+    input.addEventListener('input', () => {
+        const q = input.value.trim();
+        if (q.length >= 1) showDropdown(q);
+        else dropdown.classList.add('hidden');
+        if (!q) clearSelection();
+    });
+
+    input.addEventListener('focus', () => {
+        if (input.value.trim().length >= 1) showDropdown(input.value.trim());
+    });
+
+    clearBtn.addEventListener('click', clearSelection);
+
+    document.addEventListener('click', (ev) => {
+        if (!document.getElementById('manager-search-wrap').contains(ev.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+    // Profile Photo Preview
+    document.getElementById('profile_picture').addEventListener('change', function(e) {
+        const preview = document.getElementById('photo-preview');
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                preview.innerHTML = `<img src="${event.target.result}" class="w-full h-full object-cover">`;
+                preview.classList.remove('border-dashed', 'text-slate-400');
+                preview.classList.add('border-solid', 'border-violet-200');
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+})();
+</script>
+{% endblock %}

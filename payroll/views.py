@@ -26,7 +26,7 @@ from core.models import (
     User,
 )
 from twofa.emails import send_html_mail
-from .pdf import build_payslip_pdf
+from .pdf import build_payslip_pdf # Reload forced 2026-05-13
 from .service import (
     KERALA_PT_SLABS,
     PayrollService,
@@ -81,15 +81,19 @@ class PayrollDashboardView(LoginRequiredMixin, View):
                 Payroll.Status.HR_APPROVED, Payroll.Status.FINALIZED
             ]).order_by('month')
         else:
-            try:
-                profile = u.employee_profile
-            except EmployeeProfile.DoesNotExist:
-                return render(request, 'attendance/error.html',
-                              {'message': 'No employee profile linked.'})
-            payrolls = Payroll.objects.filter(profile=profile).order_by('-month')[:12]
-            incentives = Incentive.objects.filter(profile=profile).order_by('-month')[:12]
+            # Robust fetch by email for staff to handle multi-account confusion
+            base_qs = Payroll.objects.filter(
+                profile__user__email=u.email
+            ).select_related('profile__user', 'profile__department').order_by('-month')
+            
+            payrolls = base_qs[:12]
+            
+            incentives = Incentive.objects.filter(
+                profile__user__email=u.email
+            ).select_related('profile__user').order_by('-month')[:12]
+            
             employees = []
-            history_qs = payrolls
+            history_qs = base_qs.filter(status__in=[Payroll.Status.HR_APPROVED, Payroll.Status.FINALIZED])
 
         # Aggregate Chart.js data: total net by month
         history_map = {}
@@ -114,50 +118,66 @@ class PayrollDashboardView(LoginRequiredMixin, View):
 
 
 # ────────────────────────── Generate ──────────────────────────
-class GenerateView(HRorMDRequiredMixin, View):
-    """POST { year, month, profile_id? } -> generate (or all)."""
+class ManualAdjustmentsView(HRorMDRequiredMixin, View):
+    """Admin Dashboard > Payroll > Manual Adjustments
+    Select Department -> Enter OT/Incentives -> Submit locks data and generates payroll for that department.
+    """
+    def get(self, request):
+        today = date.today()
+        year = int(request.GET.get('year', today.year))
+        month = int(request.GET.get('month', today.month))
+        dept_id = request.GET.get('department_id')
+        
+        departments = Department.objects.filter(is_active=True).order_by('name')
+        employees_data = []
+        selected_dept_name = ""
+        if dept_id:
+            dept = get_object_or_404(Department, id=dept_id)
+            selected_dept_name = dept.name
+            profiles = dept.employees.filter(is_active=True)
+            for p in profiles:
+                svc = PayrollService(p, year, month)
+                computed_ot = svc.get_ot_hours()
+                employees_data.append({
+                    'profile': p,
+                    'computed_ot': computed_ot
+                })
+                
+        return render(request, 'payroll/manual_adjustments.html', {
+            'year': year, 'month': month,
+            'departments': departments,
+            'selected_dept': int(dept_id) if dept_id else None,
+            'selected_dept_name': selected_dept_name,
+            'employees_data': employees_data,
+        })
+        
     def post(self, request):
-        try:
-            year = int(request.POST.get('year'))
-            month = int(request.POST.get('month'))
-        except (TypeError, ValueError):
-            messages.error(request, "Invalid year/month")
-            return redirect('payroll:dashboard')
-
-        profile_id = request.POST.get('profile_id')
+        year = int(request.POST.get('year'))
+        month = int(request.POST.get('month'))
+        dept_id = request.POST.get('department_id')
+        dept = get_object_or_404(Department, id=dept_id)
+        
         created = []
-        if profile_id:
-            profile = get_object_or_404(EmployeeProfile, pk=profile_id)
-            created.append(generate_for_profile(profile, year, month))
-        else:
-            created = generate_for_month(year, month)
-
-        # Email Heads (HEAD_REVIEW notice) — console backend in dev
-        heads_emails = list(User.objects.filter(
-            role__in=[User.Role.MD, User.Role.DEPT_HEAD],
-            is_active=True,
-        ).exclude(email='').values_list('email', flat=True))
-        if heads_emails:
-            send_html_mail(
-                subject=f"[AEC HR] Payroll drafts ready — {month:02d}/{year} (48h review)",
-                template_name='email/payroll_ready.html',
-                context={
-                    'count': len(created),
-                    'month': f"{month:02d}",
-                    'year': year,
-                    'link': request.build_absolute_uri(
-                        f"{reverse_lazy('payroll:dashboard')}?year={year}&month={month}"),
-                },
-                to=heads_emails,
-            )
-
-        AuditLog.objects.create(
-            performed_by=request.user,
-            action=AuditLog.ActionType.PAYROLL_GENERATED,
-            details={'year': year, 'month': month, 'count': len(created)},
-            ip_address=request.META.get('REMOTE_ADDR'),
-        )
-        messages.success(request, f"Generated {len(created)} payroll drafts for {month:02d}/{year}.")
+        for profile in dept.employees.filter(is_active=True):
+            pid = str(profile.id)
+            ot = request.POST.get(f'ot_{pid}')
+            inc = request.POST.get(f'incentive_{pid}')
+            
+            # Add Incentive if provided
+            if inc and float(inc) > 0:
+                Incentive.objects.create(
+                    profile=profile, month=date(year, month, 1),
+                    amount=Decimal(inc), incentive_type='CUSTOM',
+                    description='Manual Entry before Payroll Generation',
+                    created_by=request.user
+                )
+                
+            ot_override = Decimal(ot) if ot and float(ot) > 0 else None
+            
+            payroll = generate_for_profile(profile, year, month, ot_override=ot_override)
+            created.append(payroll)
+            
+        messages.success(request, f"Generated {len(created)} payroll drafts for {dept.name} ({month:02d}/{year}).")
         return redirect(f"{reverse_lazy('payroll:dashboard')}?year={year}&month={month}")
 
 
@@ -206,14 +226,21 @@ class SlipView(LoginRequiredMixin, View):
         if profile_id and u.role in [User.Role.HR, User.Role.MD]:
             profile = get_object_or_404(EmployeeProfile, pk=profile_id)
         else:
-            try:
-                profile = u.employee_profile
-            except EmployeeProfile.DoesNotExist:
-                raise Http404("No employee profile.")
+            from django.db.models import F
+            profile = EmployeeProfile.objects.filter(
+                user__email=u.email
+            ).order_by(
+                F('date_of_joining').desc(nulls_last=True),
+                F('designation').desc(nulls_last=True),
+                '-id'
+            ).first()
+            
+            if not profile:
+                raise Http404("No employee profile found for your account.")
 
         payroll = Payroll.objects.filter(
-            profile=profile, month__year=year, month__month=month
-        ).first()
+            profile__user__email=u.email, month__year=year, month__month=month
+        ).order_by('-id').first()
         if not payroll:
             raise Http404("Payslip not generated for this month.")
         if (u.role == User.Role.STAFF

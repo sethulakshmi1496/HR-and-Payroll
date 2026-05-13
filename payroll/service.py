@@ -1,18 +1,18 @@
 """
 PayrollService: pure-Python computation logic.
 
-Rules (from project spec):
-- daily = profile.basic_salary / 30  (FIXED divisor, not month length)
-- gross = days_present * daily + ot_hours * (2 * daily) + sum(incentives)
-- Deductions:
-    * Kerala Professional Tax (PT) — half-yearly slabs (deducted in Aug/Feb).
-    * ESI:  0.75% of gross if gross_monthly < 21,000.
-    * PF:   12% of basic_salary (capped at 12% of 15,000 ceiling).
-- Incentives: MD-only, summed for the month.
-- Cinema departments: late penalty disabled (handled in attendance signal).
+AEC Group Payroll Rules (STRICT):
+- DAILY_RATE   = basic_salary / 30  (FIXED divisor — never use month length)
+- HOURLY_RATE  = daily_rate / 8     (8-hour work day assumed)
+- BASIC_EARNED = daily_rate * days_present
+- OT_AMOUNT    = (hourly_rate * 2) * ot_hours  (double-time rate)
+- PF           = 12% of basic_earned (NOT gross, NOT full basic)
+- ESI          = 0.75% of gross if gross < 21,000
+- Professional Tax (Kerala, monthly): 0 if gross<=12000 else 190/mo
+  (half-yearly slabs still supported for backward compatibility)
 
 KERALA_PT_SLABS — half-yearly amount (deducted Feb & Aug).
-Reference: Kerala Municipal Act, current slabs (paid twice a year).
+Reference: Kerala Municipal Act.
 """
 from decimal import Decimal, ROUND_HALF_UP
 from datetime import date
@@ -27,7 +27,6 @@ from core.models import (
 
 
 # Half-yearly Professional Tax slabs (deducted in Aug for Apr-Sep, Feb for Oct-Mar)
-# Half-year income (i.e. monthly_basic * 6) -> half-yearly tax amount
 KERALA_PT_SLABS = [
     (Decimal('11999'), Decimal('0')),
     (Decimal('17999'), Decimal('120')),
@@ -40,12 +39,14 @@ KERALA_PT_SLABS = [
     (Decimal('999999999'), Decimal('1250')),
 ]
 
-ESI_THRESHOLD = Decimal('21000')        # Gross < 21k = eligible
-ESI_RATE_EMPLOYEE = Decimal('0.0075')   # 0.75%
-PF_RATE = Decimal('0.12')               # 12%
-PF_BASIC_CAP = Decimal('15000')         # PF cap on basic
-OT_MULTIPLIER = Decimal('2')            # OT pay = 2 * daily
-PT_HALF_YEARLY_MONTHS = (2, 8)          # February & August
+ESI_THRESHOLD         = Decimal('21000')       # Gross < 21k = ESI eligible
+ESI_RATE_EMPLOYEE     = Decimal('0.0075')      # 0.75% employee share
+PF_RATE               = Decimal('0.12')        # 12% of earned basic
+OT_MULTIPLIER         = Decimal('1')           # Normal hourly rate for OT
+HOURS_PER_DAY        = Decimal('8')           # standard shift
+# Monthly PT: if gross > 12,000 → ₹190/month (Kerala current slab)
+PT_MONTHLY_THRESHOLD  = Decimal('12000')
+PT_MONTHLY_AMOUNT     = Decimal('190')
 
 
 def _q(value: Decimal) -> Decimal:
@@ -114,7 +115,8 @@ class PayrollService:
         self.month = month
         self.month_start = date(year, month, 1)
         self.basic = Decimal(profile.basic_salary)
-        self.daily = _q(self.basic / Decimal('30'))
+        self.daily  = _q(self.basic / Decimal('30'))        # FIXED /30
+        self.hourly = _q(self.daily / HOURS_PER_DAY)        # /8
 
     # ---------- Attendance / OT pulls ----------
     def get_days_present(self) -> int:
@@ -170,59 +172,128 @@ class PayrollService:
     def compute(self) -> dict:
         working_days = working_days_in_month(self.year, self.month, self.profile.department)
         days_present = self.get_days_present()
-        days_absent = max(0, working_days - days_present)
-        ot_hours = self.get_ot_hours()
-        ot_amount = _q(ot_hours * OT_MULTIPLIER * self.daily)
+        days_absent  = max(0, working_days - days_present)
+        ot_hours     = self.get_ot_hours()
         incentive_total = self.get_incentive_total()
 
-        # Late-attendance discipline deduction (in days), converted to ₹
+        # Leave policy
+        from core.models import EmployeeProfile, LeaveRequest
+        allowed_leaves = Decimal('1.0') if self.profile.probation_status == EmployeeProfile.ProbationStatus.PROBATION else Decimal('2.0')
+        
+        # Calculate half days taken
+        approved_leaves = LeaveRequest.objects.filter(
+            profile=self.profile,
+            start_date__year=self.year,
+            start_date__month=self.month,
+            status=LeaveRequest.Status.APPROVED
+        )
+        half_leaves_taken = sum(1 for leave in approved_leaves if leave.leave_type == LeaveRequest.LeaveType.HALF_DAY)
+        
+        total_absent_value = Decimal(days_absent) + (Decimal(half_leaves_taken) * Decimal('0.5'))
+        excess_leaves = max(Decimal('0.0'), total_absent_value - allowed_leaves)
+        
+        leave_deduction = _q(excess_leaves * self.daily)
+        
+        # Late Penalty (3rd occurrence onwards = 0.5 deduction)
+        late_count = Attendance.objects.filter(
+            profile=self.profile,
+            date__year=self.year,
+            date__month=self.month,
+            is_late=True
+        ).count()
+        penalty_instances = max(0, late_count - 2)
+        late_penalty_amount = _q(Decimal(penalty_instances) * (self.daily / Decimal('2')))
+        
+        # Other manual discipline deductions
         discipline_days = self.get_discipline_deduction_days()
         discipline_amount = _q(discipline_days * self.daily)
+        
+        total_leave_and_discipline_deductions = leave_deduction + late_penalty_amount + discipline_amount
+        
+        # Breakdown note
+        breakdown = []
+        if excess_leaves > 0:
+            breakdown.append(f"{excess_leaves} Excess Leave (₹{leave_deduction})")
+        if penalty_instances > 0:
+            breakdown.append(f"{penalty_instances} Late Penalty (₹{late_penalty_amount})")
+        if discipline_days > 0:
+            breakdown.append(f"{discipline_days} Discipline (₹{discipline_amount})")
+            
+        deduction_notes = " + ".join(breakdown)
+        if deduction_notes:
+            deduction_notes += f" = Total ₹{total_leave_and_discipline_deductions}"
 
-        earned_basic = _q(self.daily * Decimal(days_present))
-        gross = _q(earned_basic + ot_amount + incentive_total - discipline_amount)
-        if gross < Decimal('0'):
-            gross = Decimal('0.00')
+        # ── EARNINGS ────────────────────────────────────────────────────────
+        ot_amount = _q(self.hourly * OT_MULTIPLIER * ot_hours)
+        gross = _q(self.basic + ot_amount + incentive_total)
 
-        # Deductions
-        pt_ded = kerala_pt_for_basic(self.basic, self.month)
+        # ── DEDUCTIONS ──────────────────────────────────────────────────────
+        earned_basic = _q(self.basic - total_leave_and_discipline_deductions)
+        if earned_basic < Decimal('0'):
+            earned_basic = Decimal('0.00')
+
+        # Rule 5a: PF = 12% of EARNED BASIC (not full basic, not gross)
+        pf_ded = _q(earned_basic * PF_RATE)
+
+        # Rule 5b: ESI = 0.75% of gross if gross < ₹21,000
         esi_ded = _q(gross * ESI_RATE_EMPLOYEE) if gross < ESI_THRESHOLD else Decimal('0.00')
-        pf_basic = min(self.basic, PF_BASIC_CAP)
-        pf_ded = _q(pf_basic * PF_RATE)
 
-        total_ded = _q(pt_ded + esi_ded + pf_ded)
-        net = _q(gross - total_ded)
+        # Rule 5c: Professional Tax (Kerala) — monthly slab
+        # If gross > ₹12,000 → ₹190/month; otherwise ₹0
+        pt_ded = PT_MONTHLY_AMOUNT if gross > PT_MONTHLY_THRESHOLD else Decimal('0.00')
+
+        total_ded = _q(total_leave_and_discipline_deductions + pt_ded + esi_ded + pf_ded)
+        net       = _q(gross - total_ded)
 
         return {
-            'profile_id': self.profile.id,
-            'employee_id': self.profile.employee_id,
-            'employee_name': self.profile.user.get_full_name(),
-            'department': self.profile.department.name,
-            'month': self.month_start,
-            'basic_salary': _q(self.basic),
-            'daily_rate': self.daily,
-            'working_days': working_days,
-            'days_present': days_present,
-            'days_absent': days_absent,
-            'earned_basic': earned_basic,
-            'ot_hours': ot_hours,
-            'ot_amount': ot_amount,
-            'incentive_total': incentive_total,
-            'discipline_days': discipline_days,
-            'discipline_amount': discipline_amount,
-            'gross_salary': gross,
-            'pt_deduction': pt_ded,
-            'esi_deduction': esi_ded,
-            'pf_deduction': pf_ded,
+            'profile_id':       self.profile.id,
+            'employee_id':      self.profile.employee_id,
+            'employee_name':    self.profile.user.get_full_name(),
+            'department':       self.profile.department.name,
+            'month':            self.month_start,
+            'basic_salary':     _q(self.basic),
+            'daily_rate':       self.daily,
+            'hourly_rate':      self.hourly,
+            'working_days':     working_days,
+            'days_present':     days_present,
+            'days_absent':      days_absent,
+            'earned_basic':     earned_basic,
+            'ot_hours':         ot_hours,
+            'ot_amount':        ot_amount,
+            'incentive_total':  incentive_total,
+            'discipline_days':  discipline_days,
+            'discipline_amount':total_leave_and_discipline_deductions,
+            'deduction_notes':  deduction_notes,
+            'gross_salary':     gross,
+            'pt_deduction':     pt_ded,
+            'esi_deduction':    esi_ded,
+            'pf_deduction':     pf_ded,
             'total_deductions': total_ded,
-            'net_salary': net,
+            'net_salary':       net,
         }
 
 
-def generate_for_profile(profile: EmployeeProfile, year: int, month: int) -> Payroll:
+def generate_for_profile(profile: EmployeeProfile, year: int, month: int, ot_override=None) -> Payroll:
     """Compute + persist (idempotent — updates existing draft)."""
     svc = PayrollService(profile, year, month)
     data = svc.compute()
+    
+    if ot_override is not None:
+        data['ot_hours'] = Decimal(str(ot_override))
+        data['ot_amount'] = _q(svc.hourly * Decimal('2') * data['ot_hours'])
+        # Recompute gross and net
+        gross = _q(data['basic_salary'] + data['ot_amount'] + data['incentive_total'])
+        if gross < Decimal('0'):
+            gross = Decimal('0.00')
+        data['gross_salary'] = gross
+        esi_ded = _q(gross * Decimal('0.0075')) if gross < Decimal('21000') else Decimal('0.00')
+        pt_ded = Decimal('190') if gross > Decimal('12000') else Decimal('0.00')
+        total_ded = _q(data['discipline_amount'] + pt_ded + esi_ded + data['pf_deduction'])
+        data['esi_deduction'] = esi_ded
+        data['pt_deduction'] = pt_ded
+        data['total_deductions'] = total_ded
+        data['net_salary'] = _q(gross - total_ded)
+
     obj, _created = Payroll.objects.get_or_create(
         profile=profile,
         month=data['month'],
@@ -244,10 +315,7 @@ def generate_for_profile(profile: EmployeeProfile, year: int, month: int) -> Pay
     obj.esi_deduction = data['esi_deduction']
     obj.pf_deduction = data['pf_deduction']
     obj.other_deductions = data['discipline_amount']
-    obj.deduction_notes = (
-        f"Late discipline: {data['discipline_days']} day(s) = ₹{data['discipline_amount']}"
-        if data['discipline_days'] else ""
-    )
+    obj.deduction_notes = data['deduction_notes']
     obj.gross_salary = data['gross_salary']
     obj.total_deductions = data['total_deductions']
     obj.net_salary = data['net_salary']

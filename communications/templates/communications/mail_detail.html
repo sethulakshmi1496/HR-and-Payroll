@@ -1,0 +1,145 @@
+{% extends 'onboarding/base.html' %}
+{% block title %}{{ mail.subject }} - Mails{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-8">
+    <div class="flex justify-between items-center mb-6">
+        <a href="{% url 'communications:inbox' %}"
+           class="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-800 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            Back to Mails
+        </a>
+        {% if mail.mail_type == 'OFFER_ACCEPTANCE' and not mail.is_verified and request.user.role == 'HR' %}
+        <span class="px-3 py-1.5 bg-orange-100 text-orange-700 text-xs font-bold rounded-full animate-pulse">
+            ⚡ Acceptance Pending Verification
+        </span>
+        {% endif %}
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+
+        <!-- Header -->
+        <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start gap-4">
+            <div class="flex-1">
+                <h1 class="text-2xl font-bold text-slate-900">{{ mail.subject }}</h1>
+                <div class="flex items-center gap-3 mt-4">
+                    <!-- Avatar -->
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0
+                        {% if mail.mail_type == 'OFFER_ACCEPTANCE' %}bg-emerald-100 text-emerald-700
+                        {% elif mail.mail_type == 'PROMOTION' %}bg-amber-100 text-amber-700
+                        {% elif mail.mail_type == 'OFFER' %}bg-blue-100 text-blue-700
+                        {% else %}bg-slate-100 text-slate-600{% endif %}">
+                        {{ mail.display_sender|first|upper|default:"C" }}
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-slate-900">
+                            {{ mail.display_sender }}
+                            <span class="text-slate-400 font-normal ml-1">&lt;{{ mail.display_sender_email }}&gt;</span>
+                        </p>
+                        <p class="text-xs text-slate-500 mt-0.5">
+                            To:
+                            {% if mail.recipient %}{{ mail.recipient.get_full_name }} &lt;{{ mail.recipient.email }}&gt;
+                            {% else %}{{ mail.recipient_email }}{% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-right flex-shrink-0">
+                <p class="text-sm text-slate-500">{{ mail.created_at|date:"M j, Y, g:i a" }}</p>
+                {% if mail.mail_type != 'GENERAL' %}
+                <span class="inline-block mt-2 px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider
+                    {% if mail.mail_type == 'OFFER_ACCEPTANCE' %}
+                        {% if mail.is_verified %}bg-emerald-100 text-emerald-700{% else %}bg-orange-100 text-orange-700{% endif %}
+                    {% elif mail.mail_type == 'PROMOTION' %}bg-amber-100 text-amber-700
+                    {% else %}bg-purple-100 text-purple-700{% endif %}">
+                    {% if mail.mail_type == 'OFFER_ACCEPTANCE' and mail.is_verified %}✓ Verified — {% endif %}
+                    {{ mail.get_mail_type_display }}
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Body -->
+        <div class="p-8 text-slate-700 whitespace-pre-wrap leading-relaxed text-sm">{{ mail.body }}</div>
+
+        <!-- Candidate profile summary (for acceptance mails) -->
+        {% if mail.mail_type == 'OFFER_ACCEPTANCE' and mail.related_profile %}
+        {% with profile=mail.related_profile %}
+        <div class="mx-6 mb-6 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+            <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Candidate Details</p>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                <div>
+                    <p class="text-xs text-slate-400">Full Name</p>
+                    <p class="font-semibold text-slate-800">{{ profile.user.get_full_name }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-400">Email</p>
+                    <p class="font-medium text-slate-700">{{ profile.user.email }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-400">Department</p>
+                    <p class="font-medium text-slate-700">{{ profile.department.name }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-400">Designation</p>
+                    <p class="font-medium text-slate-700">{{ profile.designation|default:"—" }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-400">Joining Date</p>
+                    <p class="font-medium text-slate-700">
+                        {% if profile.date_of_joining %}{{ profile.date_of_joining|date:"M d, Y" }}{% else %}—{% endif %}
+                    </p>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-400">Basic Salary</p>
+                    <p class="font-semibold text-slate-800">₹{{ profile.basic_salary }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-400">Employee ID</p>
+                    <p class="font-medium text-slate-700">{{ profile.employee_id }}</p>
+                </div>
+                {% if profile.user.profile_picture %}
+                <div>
+                    <p class="text-xs text-slate-400">Profile Photo</p>
+                    <img src="{{ profile.user.profile_picture.url }}"
+                         alt="Candidate photo"
+                         class="w-10 h-10 rounded-full object-cover border border-slate-200 mt-1">
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endwith %}
+        {% endif %}
+
+        <!-- Footer actions -->
+        <div class="p-6 bg-slate-50 border-t border-slate-100 flex flex-wrap justify-between items-center gap-3">
+            <a href="{% url 'communications:compose' %}?reply_to={{ mail.display_sender_email }}"
+               class="px-5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition shadow-sm">
+                ↩ Reply
+            </a>
+
+            {% if mail.mail_type == 'OFFER_ACCEPTANCE' and not mail.is_verified and request.user.role == 'HR' %}
+            <form method="post" action="{% url 'communications:verify_acceptance' mail.id %}">
+                {% csrf_token %}
+                <button type="submit"
+                        onclick="return confirm('Verify and activate {{ mail.related_profile.user.get_full_name }} as an employee?')"
+                        class="px-6 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-semibold text-sm shadow-sm transition flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Verify & Activate Employee
+                </button>
+            </form>
+            {% elif mail.mail_type == 'OFFER_ACCEPTANCE' and mail.is_verified %}
+            <span class="px-5 py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-sm font-semibold">
+                ✓ Employee Activated
+            </span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

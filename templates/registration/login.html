@@ -1,4 +1,5 @@
 {% extends 'onboarding/base.html' %}
+{% load static %}
 
 {% block title %}Login - AEC HR SuperApp{% endblock %}
 
@@ -6,8 +7,14 @@
 <div class="min-h-[60vh] flex items-center justify-center">
     <div class="max-w-md w-full bg-white rounded-xl shadow-sm border border-slate-200 p-8" data-testid="login-card">
         <div class="mb-8 text-center">
+            <div class="flex justify-center mb-4">
+                <img src="{% static 'logo.png' %}" alt="AEC Group Logo" class="h-16 w-auto">
+            </div>
+            <div class="flex items-center justify-center gap-2 mb-1">
+                <span class="text-[11px] font-semibold text-slate-700 tracking-[0.2em] uppercase">HR APP</span>
+            </div>
             <h2 class="text-2xl font-bold text-slate-900">Welcome back</h2>
-            <p class="text-slate-500 text-sm mt-1">Sign in to AEC HR SuperApp</p>
+            <p class="text-slate-500 text-sm mt-1">Sign in to AEC Group Portal</p>
         </div>
 
         {% if form.errors %}
@@ -30,19 +37,22 @@
                        class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                        data-testid="login-password">
             </div>
-            <input type="hidden" name="next" value="{{ next }}">
+            
+            <div class="flex items-center justify-end">
+                <a href="{% url 'password_reset' %}" class="text-sm font-medium text-blue-600 hover:underline">Forgot password?</a>
+            </div>
+
             <button type="submit"
                     class="w-full flex justify-center py-2.5 px-4 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-all"
                     data-testid="login-submit">
-                Sign in
+                Login
             </button>
         </form>
 
-        <div class="mt-6 pt-6 border-t border-slate-100 text-xs text-slate-500">
-            <p class="font-medium text-slate-700 mb-1">Test accounts:</p>
-            <p>MD: <code class="bg-slate-100 px-1.5 py-0.5 rounded">md_aec / adminpassword123</code></p>
-            <p>HR: <code class="bg-slate-100 px-1.5 py-0.5 rounded">hr_aec / hrpassword123</code></p>
+        <div class="mt-6 text-center text-sm text-slate-600">
+            Don't have an account? <a href="{% url 'signup' %}" class="font-medium text-blue-600 hover:underline">Sign Up</a>
         </div>
+
     </div>
 </div>
 {% endblock %}

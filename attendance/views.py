@@ -44,28 +44,74 @@ class ClockInOutView(LoginRequiredMixin, View):
         face_b64 = data.get('face_image')
         
         dept = profile.department
-        
-        # 1. Distance Calculation (Geofence 100m)
+
+        # 1. Validity: Strict Geofence for GPS
         is_valid = True
-        if lat and lon and dept.latitude and dept.longitude:
-            dist = haversine_distance(lat, lon, dept.latitude, dept.longitude)
-            if dist > 100:
-                is_valid = False
-        else:
-            # If GPS failed or IP desktop fallback
-            is_valid = False 
+        location_name = dept.name
+        
+        AUTHORIZED_LOCATIONS = [
+            {"name": "AEC Studies Pvt. Ltd", "lat": 9.967283003625232, "lon": 76.28662859325976},
+            {"name": "AEC Pixcel Perfect PVT", "lat": 9.967283003625232, "lon": 76.28662859325976},
+            {"name": "AEC Institute", "lat": 9.967283003625232, "lon": 76.28662859325976},
+            {"name": "AEC CINEMAS", "lat": 9.498526389705322, "lon": 76.34305504232113},
+            {"name": "Bytes Cafe Alappuzha", "lat": 9.506290068630923, "lon": 76.34089742310876},
+            {"name": "AEC RESIDENCY ALAPPUZHA", "lat": 9.506567290951638, "lon": 76.34080264948254},
+        ]
+        
+        if lat and lon:
+            from .utils import haversine_distance
+            min_dist = float('inf')
+            closest_loc_name = None
             
+            for loc in AUTHORIZED_LOCATIONS:
+                d_dist = haversine_distance(float(lat), float(lon), loc['lat'], loc['lon'])
+                if d_dist < min_dist:
+                    min_dist = d_dist
+                    closest_loc_name = loc['name']
+                    
+            if min_dist <= 100 and closest_loc_name:
+                is_valid = True
+                location_name = closest_loc_name
+            else:
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'You are not at an authorized AEC location. Please ensure you are on-site to Clock In/Out.'
+                }, status=400)
+        else:
+            # No GPS (desktop / laptop) → check IP whitelist
+            if dept.allowed_ips:
+                client_ip = request.META.get('REMOTE_ADDR', '')
+                allowed = [ip.strip() for ip in dept.allowed_ips.split(',') if ip.strip()]
+                is_valid = client_ip in allowed
+                if not is_valid:
+                    return JsonResponse({
+                        'success': False, 
+                        'message': 'You are not on the authorized office network.'
+                    }, status=400)
+            else:
+                # Require GPS if no IP restriction is set to prevent remote bypass
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'Location access is required. Please enable GPS to Clock In/Out.'
+                }, status=400)
+
         # 2. Save Face Image
         face_image_path = ""
         if face_b64:
-            format, imgstr = face_b64.split(';base64,') 
-            ext = format.split('/')[-1]
-            filename = f"{profile.employee_id}_{timezone.now().strftime('%Y%m%d%H%M%S')}.{ext}"
-            file_path = os.path.join(settings.MEDIA_ROOT, 'attendance_faces', filename)
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            with open(file_path, "wb") as fh:
-                fh.write(base64.b64decode(imgstr))
-            face_image_path = os.path.join('media', 'attendance_faces', filename)
+            try:
+                format, imgstr = face_b64.split(';base64,') 
+                ext = format.split('/')[-1]
+                filename = f"{profile.employee_id}_{timezone.now().strftime('%Y%m%d%H%M%S')}.{ext}"
+                file_path = os.path.join(settings.MEDIA_ROOT, 'attendance_faces', filename)
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                with open(file_path, "wb") as fh:
+                    fh.write(base64.b64decode(imgstr))
+                face_image_path = os.path.join('media', 'attendance_faces', filename)
+            except Exception:
+                pass
+
+        user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
+        is_mobile = 'mobi' in user_agent or 'android' in user_agent or 'iphone' in user_agent
 
         # 3. Create or Update Attendance
         today = timezone.now().date()
@@ -73,7 +119,7 @@ class ClockInOutView(LoginRequiredMixin, View):
             profile=profile,
             date=today,
             defaults={
-                'source': Attendance.ClockSource.MOBILE if lat else Attendance.ClockSource.DESKTOP,
+                'source': Attendance.ClockSource.MOBILE if is_mobile else Attendance.ClockSource.DESKTOP,
                 'ip_address': request.META.get('REMOTE_ADDR')
             }
         )
@@ -82,10 +128,36 @@ class ClockInOutView(LoginRequiredMixin, View):
         attendance.gps_longitude = lon
         attendance.face_image_path = face_image_path
         attendance.is_valid = is_valid
+        attendance.location_name = location_name
         
         if action == 'in':
             if not attendance.in_time:
                 attendance.in_time = timezone.now()
+                # Late-coming logic: > 9:15 AM
+                from datetime import time
+                local_time = timezone.localtime(attendance.in_time).time()
+                if local_time > time(9, 15) and not dept.is_cinema:
+                    attendance.is_late = True
+                    
+                    # Count occurrences
+                    late_count = Attendance.objects.filter(
+                        profile=profile,
+                        date__year=today.year,
+                        date__month=today.month,
+                        is_late=True
+                    ).count()
+                    
+                    if late_count == 1:  # This will be the 2nd occurrence once saved
+                        try:
+                            from twofa.emails import send_html_mail
+                            send_html_mail(
+                                subject="Warning: Repeated Late Coming",
+                                template_name="attendance/email_late_warning.html",
+                                context={'profile': profile, 'time': local_time.strftime("%I:%M %p")},
+                                to=[profile.user.email]
+                            )
+                        except Exception:
+                            pass
         elif action == 'out':
             attendance.out_time = timezone.now()
             
@@ -103,18 +175,12 @@ class DashboardView(LoginRequiredMixin, View):
         context = {}
         
         if user.role in [User.Role.MD, User.Role.HR]:
-            # MD/HR View: All attendance for today
-<<<<<<< HEAD
-            today = timezone.now().date()
-            context['attendances'] = Attendance.objects.filter(date=today).select_related('profile__user', 'profile__department')
-            context['is_manager'] = True
-=======
+            # MD/HR View: All attendance for today with Heatmap data
             from core.models import Department
-            from django.utils import timezone as _tz
-            today = _tz.now().date()
+            today = timezone.now().date()
             todays = Attendance.objects.filter(date=today).select_related(
                 'profile__user', 'profile__department'
-            )
+            ).order_by('profile__department__name', '-in_time')
             context['attendances'] = todays
             context['is_manager'] = True
 
@@ -136,7 +202,6 @@ class DashboardView(LoginRequiredMixin, View):
             context['heatmap_labels'] = labels
             context['heatmap_present'] = presents
             context['heatmap_total'] = totals
->>>>>>> origin/conflict_080526_1642
         else:
             # Staff View: Personal history
             try:
@@ -144,11 +209,6 @@ class DashboardView(LoginRequiredMixin, View):
                 context['attendances'] = Attendance.objects.filter(profile=profile).order_by('-date')[:30]
                 context['is_manager'] = False
             except EmployeeProfile.DoesNotExist:
-<<<<<<< HEAD
-                pass
-                
-        return render(request, 'attendance/dashboard.html', context)
-=======
                 context['attendances'] = []
                 context['is_manager'] = False
                 
@@ -157,17 +217,14 @@ class DashboardView(LoginRequiredMixin, View):
 
 class LivePresenceView(LoginRequiredMixin, View):
     """JSON endpoint polled every 30s by the dashboard to refresh
-    the heatmap / map without a page reload (lighter alternative to
-    Django Channels websockets)."""
+    the heatmap / map without a page reload."""
     def get(self, request):
-        from django.utils import timezone as _tz
-        from django.http import JsonResponse
         from core.models import Department
 
         if request.user.role not in [User.Role.MD, User.Role.HR, User.Role.DEPT_HEAD]:
             return JsonResponse({'error': 'forbidden'}, status=403)
 
-        today = _tz.now().date()
+        today = timezone.now().date()
         todays = Attendance.objects.filter(date=today, in_time__isnull=False).select_related(
             'profile__user', 'profile__department'
         )
@@ -198,10 +255,9 @@ class LivePresenceView(LoginRequiredMixin, View):
         ]
 
         return JsonResponse({
-            'as_of': _tz.now().isoformat(),
+            'as_of': timezone.now().isoformat(),
             'labels': labels,
             'present': presents,
             'total': totals,
             'markers': markers,
         })
->>>>>>> origin/conflict_080526_1642

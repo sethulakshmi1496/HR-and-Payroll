@@ -1,0 +1,130 @@
+{% extends 'onboarding/base.html' %}
+{% block title %}{% if editing %}Edit{% else %}Generate{% endif %} Offer Letter - AEC Group{% endblock %}
+{% block page_title %}Generate Offer Letter{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto py-8">
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900">
+                {% if editing %}Edit Offer Letter{% else %}Generate Offer Letter{% endif %}
+            </h1>
+            <p class="text-slate-500 mt-1">Fill in the candidate's details and employment terms to draft the offer.</p>
+        </div>
+        <a href="{% url 'communications:send_promotion' %}"
+           class="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-800 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            Back
+        </a>
+    </div>
+
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+
+        <!-- Candidate Details -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 bg-blue-50 border-b border-blue-100 flex items-center gap-3">
+                <div class="w-7 h-7 bg-blue-600 text-white rounded-md flex items-center justify-center text-xs font-bold">1</div>
+                <p class="text-sm font-semibold text-blue-900">Candidate Details</p>
+            </div>
+            <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700">Full Name <span class="text-red-500">*</span></label>
+                    {{ form.candidate_name }}
+                    {% if form.candidate_name.errors %}<p class="text-red-500 text-xs mt-1">{{ form.candidate_name.errors.0 }}</p>{% endif %}
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700">Email Address <span class="text-red-500">*</span></label>
+                    {{ form.candidate_email }}
+                    {% if form.candidate_email.errors %}<p class="text-red-500 text-xs mt-1">{{ form.candidate_email.errors.0 }}</p>{% endif %}
+                    <p class="text-xs text-slate-400 mt-1">The offer letter & accept link will be sent here.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Job Details -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 bg-indigo-50 border-b border-indigo-100 flex items-center gap-3">
+                <div class="w-7 h-7 bg-indigo-600 text-white rounded-md flex items-center justify-center text-xs font-bold">2</div>
+                <p class="text-sm font-semibold text-indigo-900">Job Details</p>
+            </div>
+            <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700">Department <span class="text-red-500">*</span></label>
+                    {{ form.department }}
+                    {% if form.department.errors %}<p class="text-red-500 text-xs mt-1">{{ form.department.errors.0 }}</p>{% endif %}
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700">Job Designation <span class="text-red-500">*</span></label>
+                    {{ form.designation }}
+                    {% if form.designation.errors %}<p class="text-red-500 text-xs mt-1">{{ form.designation.errors.0 }}</p>{% endif %}
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700">Employment Type <span class="text-red-500">*</span></label>
+                    {{ form.probation_status }}
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700">Probation Duration</label>
+                    {{ form.probation_duration }}
+                    <p class="text-xs text-slate-400 mt-1">e.g. "3 months" — leave blank if permanent.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Compensation -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 bg-emerald-50 border-b border-emerald-100 flex items-center gap-3">
+                <div class="w-7 h-7 bg-emerald-600 text-white rounded-md flex items-center justify-center text-xs font-bold">3</div>
+                <p class="text-sm font-semibold text-emerald-900">Compensation &amp; Joining</p>
+            </div>
+            <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700">Monthly Basic Salary (₹) <span class="text-red-500">*</span></label>
+                    {{ form.basic_salary }}
+                    {% if form.basic_salary.errors %}<p class="text-red-500 text-xs mt-1">{{ form.basic_salary.errors.0 }}</p>{% endif %}
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700">Date of Joining</label>
+                    {{ form.date_of_joining }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Letter Content -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 bg-amber-50 border-b border-amber-100 flex items-center gap-3">
+                <div class="w-7 h-7 bg-amber-500 text-white rounded-md flex items-center justify-center text-xs font-bold">4</div>
+                <p class="text-sm font-semibold text-amber-900">Letter Content</p>
+            </div>
+            <div class="p-6 space-y-5">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700">Key Duties &amp; Responsibilities</label>
+                    {{ form.duties }}
+                    <p class="text-xs text-slate-400 mt-1">These will be printed in the offer letter.</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700">Additional Notes / HR Message</label>
+                    {{ form.additional_notes }}
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-2">
+            <a href="{% url 'communications:send_promotion' %}"
+               class="px-5 py-2.5 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-medium text-sm transition">
+                Cancel
+            </a>
+            <button type="submit"
+                    class="px-7 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold text-sm shadow-sm transition flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+                Preview Offer Letter →
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

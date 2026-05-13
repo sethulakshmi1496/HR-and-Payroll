@@ -50,11 +50,25 @@ class LeaveListView(LoginRequiredMixin, View):
     def get(self, request):
         u = request.user
         is_manager = u.role in [User.Role.HR, User.Role.MD, User.Role.DEPT_HEAD]
+        today = date.today()
+
+        on_leave_today = LeaveRequest.objects.none()
+        if is_manager:
+            on_leave_today = LeaveRequest.objects.filter(
+                status=LeaveRequest.Status.APPROVED,
+                start_date__lte=today,
+                end_date__gte=today,
+            ).select_related(
+                'profile__user', 'profile__department'
+            ).order_by('profile__department__name', 'start_date')
+            
+            if u.role == User.Role.DEPT_HEAD:
+                on_leave_today = on_leave_today.filter(profile__department__head=u)
 
         if is_manager:
             qs = LeaveRequest.objects.select_related(
                 'profile__user', 'profile__department', 'approved_by'
-            ).order_by('-created_at')
+            ).order_by('profile__department__name', 'start_date')
             if u.role == User.Role.DEPT_HEAD:
                 qs = qs.filter(profile__department__head=u)
         else:
@@ -65,7 +79,7 @@ class LeaveListView(LoginRequiredMixin, View):
                 qs = LeaveRequest.objects.none()
 
         pending = qs.filter(status=LeaveRequest.Status.PENDING)
-        history = qs.exclude(status=LeaveRequest.Status.PENDING)[:50]
+        history = qs.exclude(status=LeaveRequest.Status.PENDING).order_by('-created_at')[:50]
 
         # Approvers for redirect dropdown (managers only)
         approvers = []
@@ -77,8 +91,11 @@ class LeaveListView(LoginRequiredMixin, View):
 
         return render(request, 'leave/list.html', {
             'is_manager': is_manager,
+            'is_md': u.role == User.Role.MD,
             'pending': pending,
             'history': history,
+            'on_leave_today': on_leave_today,
+            'today': today,
             'approvers': approvers,
         })
 
@@ -157,11 +174,16 @@ class LeaveCreateView(LoginRequiredMixin, View):
             ip_address=request.META.get('REMOTE_ADDR'),
         )
 
-        # Email approvers (HTML template)
-        approver_emails = list(User.objects.filter(
-            role__in=[User.Role.HR, User.Role.MD, User.Role.DEPT_HEAD],
-            is_active=True,
-        ).exclude(email='').values_list('email', flat=True))
+        # Email: notify reporting manager first, fall back to HR/MD
+        mgr = profile.reporting_manager
+        if mgr and mgr.user.email:
+            approver_emails = [mgr.user.email]
+        else:
+            approver_emails = list(User.objects.filter(
+                role__in=[User.Role.HR, User.Role.MD, User.Role.DEPT_HEAD],
+                is_active=True,
+            ).exclude(email='').values_list('email', flat=True))
+
         if approver_emails:
             send_html_mail(
                 subject=_("[AEC HR] Leave request — %(name)s") % {

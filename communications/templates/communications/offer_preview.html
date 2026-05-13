@@ -1,0 +1,129 @@
+{% extends 'onboarding/base.html' %}
+{% block title %}Preview Offer Letter - AEC Group{% endblock %}
+{% block page_title %}Offer Letter Preview{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-8">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900">Offer Letter Preview</h1>
+            <p class="text-slate-500 mt-1">Review before sending to <strong>{{ offer.candidate_email }}</strong>.</p>
+        </div>
+        {% if not offer.is_sent %}
+        <div class="flex gap-3">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="edit">
+                <button class="px-4 py-2 border border-slate-300 bg-white rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition">
+                    ✏ Edit
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Letter preview card -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
+
+        <!-- Letter header -->
+        <div class="bg-gradient-to-r from-blue-700 to-blue-500 px-10 py-8 text-center text-white">
+            <p class="text-xs font-bold uppercase tracking-[0.2em] text-blue-200 mb-1">AEC Group</p>
+            <h2 class="text-2xl font-bold">Official Offer Letter</h2>
+            <p class="text-blue-200 text-sm mt-1">{{ offer.created_at|date:"F d, Y" }}</p>
+        </div>
+
+        <div class="px-10 py-8 space-y-6 text-slate-700 text-sm leading-relaxed">
+            <p>Dear <strong class="text-slate-900">{{ offer.candidate_name }}</strong>,</p>
+
+            <p>
+                Following a thorough evaluation, we are delighted to offer you the position of
+                <strong class="text-slate-900">{{ offer.designation }}</strong> within the
+                <strong class="text-slate-900">{{ offer.department }}</strong> department at AEC Group.
+            </p>
+
+            <!-- Employment Details table -->
+            <div class="bg-blue-50 border border-blue-100 rounded-xl p-5">
+                <p class="text-xs font-bold uppercase tracking-wider text-blue-600 mb-4">Employment Details</p>
+                <div class="grid grid-cols-2 gap-y-3 gap-x-8">
+                    <div>
+                        <p class="text-xs text-slate-500">Employment Type</p>
+                        <p class="font-semibold text-slate-800">{{ offer.get_probation_status_display }}</p>
+                    </div>
+                    {% if offer.probation_duration %}
+                    <div>
+                        <p class="text-xs text-slate-500">Probation Duration</p>
+                        <p class="font-semibold text-slate-800">{{ offer.probation_duration }}</p>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <p class="text-xs text-slate-500">Monthly Basic Salary</p>
+                        <p class="font-semibold text-slate-800">₹{{ offer.basic_salary }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500">Date of Joining</p>
+                        <p class="font-semibold text-slate-800">
+                            {% if offer.date_of_joining %}{{ offer.date_of_joining|date:"F d, Y" }}{% else %}To Be Confirmed{% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {% if offer.duties %}
+            <div>
+                <p class="font-semibold text-slate-800 mb-2">Key Duties &amp; Responsibilities</p>
+                <div class="bg-slate-50 border-l-4 border-blue-400 px-4 py-3 rounded-r whitespace-pre-wrap text-slate-600">{{ offer.duties }}</div>
+            </div>
+            {% endif %}
+
+            {% if offer.additional_notes %}
+            <div>
+                <p class="font-semibold text-slate-800 mb-2">Additional Information</p>
+                <p class="whitespace-pre-wrap text-slate-600">{{ offer.additional_notes }}</p>
+            </div>
+            {% endif %}
+
+            <div class="border-t border-slate-100 pt-4">
+                <p class="text-slate-500 text-xs">
+                    The candidate will receive this letter with an <strong>"Accept Offer"</strong> button.
+                    When they click it, they will be asked to submit their name, phone, and profile photo.
+                    Their employee profile will be created automatically and you will be notified in your inbox.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action bar -->
+    {% if offer.is_sent %}
+    <div class="flex items-center justify-center gap-3 p-5 bg-emerald-50 border border-emerald-200 rounded-xl">
+        <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="text-sm font-semibold text-emerald-800">
+            This offer letter was already sent to {{ offer.candidate_email }}.
+        </p>
+    </div>
+    {% else %}
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="send">
+        <div class="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-xl shadow-sm">
+            <div>
+                <p class="text-sm font-semibold text-slate-800">Ready to send?</p>
+                <p class="text-xs text-slate-500 mt-0.5">
+                    An email with this offer and an Accept button will be sent to
+                    <strong>{{ offer.candidate_email }}</strong>.
+                </p>
+            </div>
+            <button type="submit"
+                    class="px-7 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold text-sm shadow-md transition flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                </svg>
+                Send Offer Letter
+            </button>
+        </div>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

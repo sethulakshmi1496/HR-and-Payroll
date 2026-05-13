@@ -3,136 +3,245 @@
 {% block title %}{% trans "Assets & NOC" %} - AEC Group{% endblock %}
 
 {% block content %}
-<div class="mb-8 flex flex-wrap items-end justify-between gap-4">
-    <div>
-        <h1 class="text-3xl font-bold text-slate-900">{% trans "Assets & NOC" %}</h1>
-        <p class="text-slate-500 mt-1">{% trans "Phones, SIMs, equipment, ID cards & NOC certificates." %}</p>
+<div class="min-h-screen bg-[#f8fafc]"> <!-- Zoho-like light background -->
+
+    {# ══════════════════════════════════════════════════════════════════ #}
+    {#  HEADER SECTION                                                    #}
+    {# ══════════════════════════════════════════════════════════════════ #}
+    <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <nav class="flex text-xs text-slate-400 mb-1" aria-label="Breadcrumb">
+                <ol class="flex items-center space-x-1">
+                    <li><a href="/" class="hover:text-blue-600">Home</a></li>
+                    <li><span class="mx-1">/</span></li>
+                    <li class="text-slate-600 font-medium">Organization</li>
+                </ol>
+            </nav>
+            <h1 class="text-2xl font-semibold text-slate-800 tracking-tight">
+                {% if request.user.role == 'MD' %}{% trans "Assets & NOC Report" %}{% else %}{% trans "Assets & NOC" %}{% endif %}
+            </h1>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <a href="{% url 'assets:discipline' %}" class="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded shadow-sm hover:bg-slate-50 transition-all">
+                {% trans "Discipline Records" %}
+            </a>
+            {% if is_manager and request.user.role != 'MD' %}
+                <button onclick="document.getElementById('asset-issue-card').scrollIntoView({behavior: 'smooth'})" class="px-4 py-2 text-sm font-medium text-white bg-[#007bff] rounded shadow-sm hover:bg-blue-700 transition-all">
+                    + {% trans "Add Asset" %}
+                </button>
+            {% endif %}
+        </div>
     </div>
-    <a href="{% url 'assets:discipline' %}" class="text-sm text-blue-600 hover:underline" data-testid="link-discipline">{% trans "Discipline records" %} →</a>
-</div>
 
-{% if messages %}<div class="mb-4">{% for m in messages %}<div class="mb-2 p-3 rounded-lg text-sm bg-blue-50 border border-blue-200 text-blue-800">{{ m }}</div>{% endfor %}</div>{% endif %}
+    {% if messages %}<div class="mb-4">{% for m in messages %}<div class="p-3 rounded border-l-4 border-blue-500 bg-white shadow-sm text-sm text-slate-700">{{ m }}</div>{% endfor %}</div>{% endif %}
 
-{% if is_manager %}
-<!-- Issue asset form -->
-<div class="bg-white rounded-xl border border-slate-200 p-6 mb-6">
-    <h3 class="font-semibold text-slate-900 mb-4">{% trans "Issue new asset" %}</h3>
-    <form method="post" action="{% url 'assets:issue' %}" class="grid grid-cols-1 md:grid-cols-6 gap-3" data-testid="asset-issue-form">
-        {% csrf_token %}
-        <select name="profile_id" required class="px-3 py-2 border border-slate-300 rounded-lg text-sm md:col-span-2">
-            <option value="">{% trans "Employee" %}…</option>
-            {% for p in employees %}<option value="{{ p.id }}">{{ p.employee_id }} — {{ p.user.get_full_name }}</option>{% endfor %}
-        </select>
-        <select name="asset_type" required class="px-3 py-2 border border-slate-300 rounded-lg text-sm">
-            {% for v, l in asset_types %}<option value="{{ v }}">{{ l }}</option>{% endfor %}
-        </select>
-        <input type="text" name="label" placeholder="{% trans 'Label / Phone # / Model' %}" required class="px-3 py-2 border border-slate-300 rounded-lg text-sm">
-        <input type="date" name="issued_date" required class="px-3 py-2 border border-slate-300 rounded-lg text-sm">
-        <button type="submit" class="px-4 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700" data-testid="asset-issue-submit">{% trans "Issue" %}</button>
-    </form>
-</div>
-{% endif %}
-
-<!-- Assets table -->
-<div class="bg-white rounded-xl border border-slate-200 overflow-hidden mb-8">
-    <div class="px-5 py-4 border-b border-slate-100"><h3 class="font-semibold">{% trans "Issued assets" %}</h3></div>
-    <div class="overflow-x-auto">
-        <table class="w-full text-sm" data-testid="assets-table">
-            <thead class="bg-slate-50 text-xs font-semibold text-slate-500 uppercase">
-                <tr>
-                    {% if is_manager %}<th class="p-3 text-left">{% trans "Employee" %}</th>{% endif %}
-                    <th class="p-3 text-left">{% trans "Type" %}</th>
-                    <th class="p-3 text-left">{% trans "Label" %}</th>
-                    <th class="p-3 text-left">{% trans "Issued" %}</th>
-                    <th class="p-3 text-left">{% trans "Status" %}</th>
-                    {% if is_manager %}<th class="p-3 text-right">{% trans "Action" %}</th>{% endif %}
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-                {% for a in assets %}
-                <tr>
-                    {% if is_manager %}<td class="p-3">{{ a.profile.user.get_full_name }} <span class="text-xs text-slate-500 block">{{ a.profile.employee_id }}</span></td>{% endif %}
-                    <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-slate-100">{{ a.get_asset_type_display }}</span></td>
-                    <td class="p-3 font-medium">{{ a.label }}</td>
-                    <td class="p-3 text-slate-600">{{ a.issued_date }}</td>
-                    <td class="p-3">
-                        {% if a.status == 'ISSUED' %}<span class="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-800">{% trans "Issued" %}</span>
-                        {% elif a.status == 'RETURNED' %}<span class="px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-800">{% trans "Returned" %}</span>
-                        {% elif a.status == 'LOST' %}<span class="px-2 py-0.5 rounded text-xs bg-red-100 text-red-800">{% trans "Lost" %}</span>{% endif %}
-                    </td>
-                    {% if is_manager %}
-                    <td class="p-3 text-right">
-                        {% if a.status == 'ISSUED' %}
-                        <form method="post" action="{% url 'assets:return' a.pk %}" class="inline">{% csrf_token %}
-                            <button name="status" value="RETURNED" class="text-emerald-700 hover:underline text-xs" data-testid="asset-return-{{ a.pk }}">{% trans "Mark returned" %}</button>
-                        </form>
-                        {% endif %}
-                    </td>
-                    {% endif %}
-                </tr>
-                {% empty %}
-                <tr><td colspan="6" class="p-6 text-center text-slate-500">{% trans "No assets." %}</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    {# ══════════════════════════════════════════════════════════════════ #}
+    {#  STAT CARDS (Zoho Style Overview)                                  #}
+    {# ══════════════════════════════════════════════════════════════════ #}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+                <p class="text-xs font-semibold text-slate-500 uppercase">Total Assets</p>
+                <p class="text-2xl font-bold text-slate-800">{{ assets.count }}</p>
+            </div>
+            <div class="bg-blue-50 p-3 rounded-full"><svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg></div>
+        </div>
+        <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+                <p class="text-xs font-semibold text-slate-500 uppercase">Pending NOCs</p>
+                <p class="text-2xl font-bold text-slate-800">{{ nocs.count }}</p>
+            </div>
+            <div class="bg-amber-50 p-3 rounded-full"><svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></div>
+        </div>
+        <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+                <p class="text-xs font-semibold text-slate-500 uppercase">Departments</p>
+                <p class="text-2xl font-bold text-slate-800">Active</p>
+            </div>
+            <div class="bg-purple-50 p-3 rounded-full"><svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg></div>
+        </div>
     </div>
-</div>
 
-<!-- NOC -->
-<div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-    <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-        <h3 class="font-semibold">{% trans "NOC Certificates" %}</h3>
-        {% if is_manager %}
-        <form method="post" action="{% url 'assets:noc_issue' %}" enctype="multipart/form-data" class="flex items-center gap-2 text-sm" data-testid="noc-issue-form">
+    {# ══════════════════════════════════════════════════════════════════ #}
+    {#  FORMS & TABLES                                                    #}
+    {# ══════════════════════════════════════════════════════════════════ #}
+
+    {% if is_manager and request.user.role != 'MD' %}
+    <!-- Zoho-Style Floating Card for Form -->
+    <div id="asset-issue-card" class="bg-white rounded-lg border border-slate-200 shadow-sm mb-8 overflow-hidden">
+        <div class="px-6 py-4 bg-slate-50 border-b border-slate-200">
+            <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider">{% trans "Quick Issue Asset" %}</h3>
+        </div>
+        <form method="post" action="{% url 'assets:issue' %}" class="p-6 grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
             {% csrf_token %}
-            <select name="profile_id" required class="px-2 py-1 border border-slate-300 rounded text-xs">
-                <option value="">{% trans "Employee" %}…</option>
-                {% for p in employees %}<option value="{{ p.id }}">{{ p.employee_id }}</option>{% endfor %}
-            </select>
-            <input type="text" name="purpose" placeholder="{% trans 'Purpose' %}" class="px-2 py-1 border border-slate-300 rounded text-xs">
-            <input type="file" name="template_pdf" accept="application/pdf" class="text-xs">
-            <button type="submit" class="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700" data-testid="noc-issue-submit">{% trans "Issue NOC" %}</button>
+            <div class="md:col-span-3">
+                <label class="block text-xs font-medium text-slate-500 mb-1">{% trans "Employee" %}</label>
+                <select name="profile_id" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded text-sm focus:bg-white focus:ring-1 focus:ring-blue-500 transition-all">
+                    <option value="">{% trans "Select Employee" %}…</option>
+                    {% for p in employees %}<option value="{{ p.id }}">{{ p.employee_id }} — {{ p.user.get_full_name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-xs font-medium text-slate-500 mb-1">{% trans "Asset Type" %}</label>
+                <select name="asset_type" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded text-sm">
+                    {% for v, l in asset_types %}<option value="{{ v }}">{{ l }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="md:col-span-4">
+                <label class="block text-xs font-medium text-slate-500 mb-1">{% trans "Details" %}</label>
+                <input type="text" name="label" placeholder="Phone #, Serial, or Model" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded text-sm">
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-xs font-medium text-slate-500 mb-1">{% trans "Date Issued" %}</label>
+                <input type="date" name="issued_date" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded text-sm">
+            </div>
+            <div class="md:col-span-1">
+                <button type="submit" class="w-full py-2 bg-emerald-600 text-white text-sm font-semibold rounded hover:bg-emerald-700 transition-all">{% trans "Add" %}</button>
+            </div>
         </form>
-        {% endif %}
     </div>
-    <div class="overflow-x-auto">
-        <table class="w-full text-sm" data-testid="noc-table">
-            <thead class="bg-slate-50 text-xs font-semibold text-slate-500 uppercase">
-                <tr>
-                    {% if is_manager %}<th class="p-3 text-left">{% trans "Employee" %}</th>{% endif %}
-                    <th class="p-3 text-left">{% trans "Purpose" %}</th>
-                    <th class="p-3 text-left">{% trans "Status" %}</th>
-                    <th class="p-3 text-right">{% trans "Action" %}</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-                {% for n in nocs %}
-                <tr>
-                    {% if is_manager %}<td class="p-3">{{ n.profile.user.get_full_name }}</td>{% endif %}
-                    <td class="p-3">{{ n.purpose }}</td>
-                    <td class="p-3">
-                        {% if n.status == 'ISSUED' %}<span class="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">{% trans "Awaiting signature" %}</span>
-                        {% elif n.status == 'SIGNED' %}<span class="px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-800">{% trans "Signed" %}</span>
-                        {% elif n.status == 'CLOSED' %}<span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">{% trans "Closed" %}</span>{% endif %}
-                    </td>
-                    <td class="p-3 text-right whitespace-nowrap">
-                        {% if n.template_pdf %}
-                            <a href="{% url 'assets:noc_template_download' n.pk %}" class="text-blue-600 hover:underline text-xs" data-testid="noc-template-{{ n.pk }}">{% trans "Template ↓" %}</a>
-                        {% endif %}
-                        {% if n.status == 'ISSUED' %}
-                            <form method="post" action="{% url 'assets:noc_sign' n.pk %}" enctype="multipart/form-data" class="inline ml-2">{% csrf_token %}
-                                <input type="file" name="signed_pdf" accept="application/pdf" class="text-xs" data-testid="noc-signed-{{ n.pk }}">
-                                <button class="text-emerald-700 hover:underline text-xs ml-1">{% trans "Upload" %}</button>
+    {% endif %}
+
+    <!-- ASSETS TABLE -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm mb-8 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+            <h3 class="font-bold text-slate-800">{% trans "Asset Inventory" %}</h3>
+            <div class="relative">
+                <input type="text" placeholder="Search..." class="pl-8 pr-4 py-1.5 text-xs border border-slate-200 rounded-full focus:outline-none focus:ring-1 focus:ring-blue-400 w-64">
+                <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-[#f1f5f9] text-slate-600 text-[11px] uppercase font-bold tracking-widest border-b border-slate-200">
+                    <tr>
+                        <th class="px-6 py-4 text-left">{% trans "Employee" %}</th>
+                        <th class="px-6 py-4 text-left">{% trans "Asset Details" %}</th>
+                        <th class="px-6 py-4 text-left">{% trans "Issued On" %}</th>
+                        <th class="px-6 py-4 text-left">{% trans "Status" %}</th>
+                        {% if is_manager and request.user.role != 'MD' %}<th class="px-6 py-4 text-right">{% trans "Actions" %}</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for a in assets %}
+                    <tr class="hover:bg-blue-50/30 transition-colors group">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center">
+                                <div class="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-xs mr-3">
+                                    {{ a.profile.user.first_name|first }}{{ a.profile.user.last_name|first }}
+                                </div>
+                                <div>
+                                    <div class="font-semibold text-slate-900">{{ a.profile.user.get_full_name }}</div>
+                                    <div class="text-[11px] text-slate-500">{{ a.profile.employee_id }} • {{ a.profile.department.name }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 inline-block rounded mb-1">{{ a.get_asset_type_display }}</div>
+                            <div class="text-slate-800 font-medium">{{ a.label }}</div>
+                        </td>
+                        <td class="px-6 py-4 text-slate-500">{{ a.issued_date }}</td>
+                        <td class="px-6 py-4">
+                            {% if a.status == 'ISSUED' %}<span class="inline-flex items-center text-[10px] font-bold uppercase px-2 py-1 bg-blue-100 text-blue-700 rounded-full">● {% trans "Issued" %}</span>
+                            {% elif a.status == 'RETURNED' %}<span class="inline-flex items-center text-[10px] font-bold uppercase px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full">● {% trans "Returned" %}</span>
+                            {% elif a.status == 'LOST' %}<span class="inline-flex items-center text-[10px] font-bold uppercase px-2 py-1 bg-red-100 text-red-700 rounded-full">● {% trans "Lost" %}</span>{% endif %}
+                        </td>
+                        {% if is_manager and request.user.role != 'MD' %}
+                        <td class="px-6 py-4 text-right opacity-0 group-hover:opacity-100 transition-opacity">
+                            {% if a.status == 'ISSUED' %}
+                            <form method="post" action="{% url 'assets:return' a.pk %}" class="inline">{% csrf_token %}
+                                <button name="status" value="RETURNED" class="bg-white border border-slate-200 px-3 py-1 rounded text-xs font-medium text-emerald-600 shadow-sm hover:bg-emerald-50 transition-all">
+                                    {% trans "Check-In" %}
+                                </button>
                             </form>
+                            {% endif %}
+                        </td>
                         {% endif %}
-                        {% if n.signed_pdf %}<a href="{{ n.signed_pdf.url }}" class="text-slate-700 hover:underline text-xs ml-2">{% trans "Signed ↓" %}</a>{% endif %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="4" class="p-6 text-center text-slate-500">{% trans "No NOCs." %}</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="p-12 text-center text-slate-400 italic">{% trans "No assets found in inventory." %}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- NOC SECTION (Zoho Minimalist Table) -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-5 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <h3 class="font-bold text-slate-800">{% trans "NOC Certificates" %}</h3>
+            {% if is_manager and request.user.role != 'MD' %}
+            <form method="post" action="{% url 'assets:noc_issue' %}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-2">
+                {% csrf_token %}
+                <select name="profile_id" required class="px-2 py-1.5 border border-slate-300 rounded text-xs bg-white">
+                    <option value="">{% trans "Employee" %}…</option>
+                    {% for p in employees %}<option value="{{ p.id }}">{{ p.employee_id }}</option>{% endfor %}
+                </select>
+                <input type="text" name="purpose" placeholder="{% trans 'Purpose' %}" class="px-2 py-1.5 border border-slate-300 rounded text-xs">
+                <input type="file" name="template_pdf" accept="application/pdf" class="text-[10px] text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:bg-blue-50 file:text-blue-700">
+                <button type="submit" class="px-4 py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700 transition-all">{% trans "Issue NOC" %}</button>
+            </form>
+            {% endif %}
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-[#f8fafc] text-slate-500 text-[11px] uppercase font-bold border-b border-slate-200">
+                    <tr>
+                        <th class="px-6 py-4 text-left">{% trans "Employee" %}</th>
+                        <th class="px-6 py-4 text-left">{% trans "Purpose" %}</th>
+                        <th class="px-6 py-4 text-left">{% trans "Status" %}</th>
+                        <th class="px-6 py-4 text-right">{% trans "File Actions" %}</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for n in nocs %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-semibold text-slate-700">{{ n.profile.user.get_full_name }}</td>
+                        <td class="px-6 py-4 text-slate-600">{{ n.purpose }}</td>
+                        <td class="px-6 py-4">
+                            {% if n.status == 'ISSUED' %}<span class="px-2 py-1 text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 rounded">{% trans "Awaiting signature" %}</span>
+                            {% elif n.status == 'SIGNED' %}<span class="px-2 py-1 text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded">{% trans "Signed" %}</span>
+                            {% elif n.status == 'CLOSED' %}<span class="px-2 py-1 text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 rounded">{% trans "Closed" %}</span>{% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-right whitespace-nowrap">
+                            <div class="flex items-center justify-end gap-3">
+                                {% if n.template_pdf %}
+                                    <a href="{% url 'assets:noc_template_download' n.pk %}" class="flex items-center text-xs text-blue-600 hover:text-blue-800 font-medium">
+                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Template
+                                    </a>
+                                {% endif %}
+                                {% if n.status == 'ISSUED' and request.user.role != 'MD' %}
+                                    <form method="post" action="{% url 'assets:noc_sign' n.pk %}" enctype="multipart/form-data" class="flex items-center bg-slate-100 p-1 rounded">
+                                        {% csrf_token %}
+                                        <input type="file" name="signed_pdf" accept="application/pdf" class="w-24 text-[10px] file:hidden">
+                                        <button class="bg-emerald-600 text-white px-2 py-1 rounded text-[10px] font-bold hover:bg-emerald-700">{% trans "Upload Signed" %}</button>
+                                    </form>
+                                {% endif %}
+                                {% if n.signed_pdf %}
+                                    <a href="{{ n.signed_pdf.url }}" class="flex items-center text-xs text-slate-700 hover:text-black font-bold">
+                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg> Download
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="p-8 text-center text-slate-400">{% trans "No NOC requests recorded." %}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
+
+<style>
+    /* Zoho-specific UI refinements */
+    body { font-family: 'Inter', sans-serif; }
+    table thead th { letter-spacing: 0.05em; }
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(0.5);
+    }
+</style>
+
 {% endblock %}

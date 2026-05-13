@@ -4,18 +4,76 @@
 {% block title %}{% trans "Leave Requests" %} - AEC Group{% endblock %}
 
 {% block content %}
+
+{% if is_manager %}
+{# ── MD / HR / Dept Head: Today's Leave Report ─────────────────────────── #}
+<div class="mb-8 flex flex-wrap items-end justify-between gap-4">
+    <div>
+        <h1 class="text-3xl font-bold text-slate-900">{% if is_md %}Leave Report{% else %}Leave Management{% endif %}</h1>
+        <p class="text-slate-500 mt-1">Employees on approved leave today — {{ today|date:"F j, Y" }}</p>
+    </div>
+    <span class="px-4 py-2 bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold rounded-lg">
+        {{ on_leave_today|length }} Employee{{ on_leave_today|length|pluralize }} on Leave Today
+    </span>
+    {% if not is_md %}
+    <a href="{% url 'leave:create' %}" class="px-5 py-2.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
+        + {% trans "New Request" %}
+    </a>
+    {% endif %}
+</div>
+
+{% regroup on_leave_today by profile.department as today_dept_list %}
+{% for dept in today_dept_list %}
+<h3 class="text-lg font-bold text-slate-900 mt-6 mb-3">{{ dept.grouper.name }}</h3>
+<div class="bg-white rounded-xl border border-slate-200 overflow-hidden mb-6">
+    <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            <tr>
+                <th class="p-4 text-left">Employee</th>
+                <th class="p-4 text-left">Leave Type</th>
+                <th class="p-4 text-left">From</th>
+                <th class="p-4 text-left">To</th>
+                <th class="p-4 text-left">Duration</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for l in dept.list %}
+            <tr class="hover:bg-slate-50">
+                <td class="p-4">
+                    <div class="font-medium text-slate-900">{{ l.profile.user.get_full_name }}</div>
+                    <div class="text-xs text-slate-400">{{ l.profile.employee_id }}</div>
+                </td>
+                <td class="p-4">
+                    <span class="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-800">{{ l.get_leave_type_display }}</span>
+                </td>
+                <td class="p-4 text-slate-600">{{ l.start_date|date:"M j, Y" }}</td>
+                <td class="p-4 text-slate-600">{{ l.end_date|date:"M j, Y" }}</td>
+                <td class="p-4 text-slate-600">{{ l.duration_days }} day{{ l.duration_days|pluralize }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% empty %}
+<div class="bg-white rounded-xl border border-slate-200 p-10 text-center mb-6">
+    <div class="text-slate-400 text-sm">✅ No employees are on leave today.</div>
+</div>
+{% endfor %}
+{% endif %}
+{% if not is_manager %}
+{# ── Staff: Full leave management ─────────────────── #}
 <div class="flex items-end justify-between mb-6">
     <div>
         <h1 class="text-3xl font-bold text-slate-900">{% trans "Leave Requests" %}</h1>
         <p class="text-slate-500 mt-1">
-            {% if is_manager %}{% trans "Review pending requests and approve or reject." %}
-            {% else %}{% trans "Submit and track your leave requests." %}{% endif %}
+            {% trans "Submit and track your leave requests." %}
         </p>
     </div>
     <a href="{% url 'leave:create' %}" class="px-5 py-2.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700" data-testid="leave-new-btn">
         + {% trans "New Request" %}
     </a>
 </div>
+{% endif %}
 
 <div class="mb-6 flex gap-3 text-sm">
     <a href="{% url 'leave:calendar' %}" class="text-blue-600 hover:underline" data-testid="link-calendar">📅 {% trans "Calendar" %}</a>
@@ -28,10 +86,13 @@
 <div class="mb-4">{% for m in messages %}<div class="mb-2 p-3 rounded-lg text-sm bg-blue-50 border border-blue-200 text-blue-800">{{ m }}</div>{% endfor %}</div>
 {% endif %}
 
-{% if is_manager %}
-<h2 class="text-lg font-semibold text-slate-900 mb-3">{% trans "Pending" %} ({{ pending|length }})</h2>
-<div class="bg-white rounded-xl border border-slate-200 overflow-hidden mb-8">
-    <table class="w-full text-sm" data-testid="pending-table">
+{% if is_manager and not is_md %}
+<h2 class="text-xl font-bold text-slate-900 mb-3 mt-8">{% trans "Pending Leave Requests" %} ({{ pending|length }})</h2>
+{% regroup pending by profile.department as pending_dept_list %}
+{% for dept in pending_dept_list %}
+<h3 class="text-lg font-bold text-slate-800 mt-6 mb-3">{{ dept.grouper.name }}</h3>
+<div class="bg-white rounded-xl border border-slate-200 overflow-hidden mb-6">
+    <table class="w-full text-sm" data-testid="pending-table-{{ dept.grouper.code }}">
         <thead class="bg-amber-50 text-xs font-semibold text-amber-800 uppercase">
             <tr>
                 <th class="p-3 text-left">{% trans "Employee" %}</th>
@@ -43,13 +104,18 @@
             </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
-            {% for l in pending %}
+            {% for l in dept.list %}
             <tr>
                 <td class="p-3"><div class="font-medium">{{ l.profile.user.get_full_name }}</div><div class="text-xs text-slate-500">{{ l.profile.employee_id }}</div></td>
                 <td class="p-3">{{ l.get_leave_type_display }}</td>
                 <td class="p-3">{{ l.start_date }}</td>
                 <td class="p-3">{{ l.end_date }}</td>
-                <td class="p-3 text-slate-600 text-xs max-w-xs truncate">{{ l.reason }}</td>
+                <td class="p-3 text-slate-600 text-xs max-w-xs">
+                    <div class="truncate font-medium">{{ l.reason }}</div>
+                    {% if l.rejection_reason %}
+                    <div class="redirect-log" data-log="{{ l.rejection_reason|escape }}"></div>
+                    {% endif %}
+                </td>
                 <td class="p-3 text-right whitespace-nowrap">
                     <form method="post" action="{% url 'leave:decision' l.pk %}" class="inline">
                         {% csrf_token %}
@@ -68,12 +134,13 @@
                     {% endif %}
                 </td>
             </tr>
-            {% empty %}
-            <tr><td colspan="6" class="p-6 text-center text-slate-500">{% trans "No pending requests." %}</td></tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
+{% empty %}
+<div class="bg-white rounded-xl border border-slate-200 p-6 text-center text-slate-500 mb-8">{% trans "No pending requests." %}</div>
+{% endfor %}
 {% endif %}
 
 <h2 class="text-lg font-semibold text-slate-900 mb-3">{% trans "History" %}</h2>
@@ -97,10 +164,15 @@
                 <td class="p-3">{{ l.start_date }}</td>
                 <td class="p-3">{{ l.end_date }}</td>
                 <td class="p-3">
+                    <div>
                     {% if l.status == 'APPROVED' %}<span class="px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-800">{% trans "Approved" %}</span>
                     {% elif l.status == 'REJECTED' %}<span class="px-2 py-0.5 rounded text-xs bg-red-100 text-red-800">{% trans "Rejected" %}</span>
                     {% elif l.status == 'CANCELLED' %}<span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">{% trans "Cancelled" %}</span>
                     {% else %}<span class="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">{% trans "Pending" %}</span>{% endif %}
+                    </div>
+                    {% if l.rejection_reason %}
+                    <div class="redirect-log" data-log="{{ l.rejection_reason|escape }}"></div>
+                    {% endif %}
                 </td>
                 {% if not is_manager %}
                 <td class="p-3 text-right">
@@ -116,4 +188,31 @@
         </tbody>
     </table>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    document.querySelectorAll('.redirect-log').forEach(function(el) {
+        const text = el.getAttribute('data-log');
+        if (!text) return;
+        const lines = text.split('\n');
+        let html = '<div class="space-y-1.5 mt-2">';
+        lines.forEach(line => {
+            line = line.trim();
+            if (!line) return;
+            if (line.startsWith('[Redirected by') && line.endsWith(']')) {
+                const inner = line.substring(1, line.length - 1).replace('Redirected by', '<span class="font-semibold">Redirected:</span>');
+                html += `<div class="flex items-start text-[11px] text-indigo-700 bg-indigo-50 border border-indigo-100/50 rounded-md px-2 py-1.5">
+                            <svg class="w-3 h-3 mr-1.5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>${inner}</span>
+                         </div>`;
+            } else {
+                html += `<div class="text-[11px] text-slate-600 italic border-l-2 border-slate-300 pl-2 ml-1">"${line}"</div>`;
+            }
+        });
+        html += '</div>';
+        el.innerHTML = html;
+    });
+});
+</script>
+</script>
 {% endblock %}

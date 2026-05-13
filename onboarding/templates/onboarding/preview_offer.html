@@ -1,0 +1,55 @@
+{% extends 'onboarding/base.html' %}
+{% block title %}Preview Offer Letter - AEC Group{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <div class="mb-8 flex justify-between items-center">
+        <div>
+            <h2 class="text-2xl font-bold text-slate-900">Preview Offer Letter</h2>
+            <p class="text-slate-500 text-sm mt-1">Review the final appointment letter before dispatching.</p>
+        </div>
+        <form method="post" class="flex space-x-3">
+            {% csrf_token %}
+            <button type="submit" name="action" value="edit" class="px-4 py-2 border border-slate-300 text-slate-700 bg-white rounded-lg hover:bg-slate-50 font-medium text-sm transition">
+                Discard & Edit
+            </button>
+            <button type="submit" name="action" value="send" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-sm shadow-sm transition">
+                Confirm & Send Mail
+            </button>
+        </form>
+    </div>
+
+    <!-- Live Preview Box -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-slate-50 border-b border-slate-200 p-4">
+            <p class="text-sm text-slate-500"><span class="font-medium text-slate-700">To:</span> {{ profile.user.email }}</p>
+            <p class="text-sm text-slate-500 mt-1"><span class="font-medium text-slate-700">Subject:</span> AEC Group - Official Appointment Letter</p>
+        </div>
+        <div class="p-8">
+            <h2 class="text-xl font-bold text-blue-600 mb-4">Welcome to AEC Group!</h2>
+            <p class="text-slate-800 mb-4">Dear <strong>{{ profile.user.get_full_name }}</strong>,</p>
+            <p class="text-slate-800 mb-4">Following the successful verification of your onboarding documents, we are thrilled to officially offer you the position of <strong>{{ profile.designation }}</strong> within the <strong>{{ profile.department.name }}</strong> department.</p>
+            
+            <h3 class="font-bold text-slate-900 mt-6 mb-2">Employment Details:</h3>
+            <ul class="list-disc list-inside text-slate-800 space-y-1 mb-6">
+                <li><strong>Employment Type:</strong> {{ profile.get_probation_status_display }}</li>
+                {% if probation_duration %}<li><strong>Probation Duration:</strong> {{ probation_duration }}</li>{% endif %}
+                <li><strong>Monthly Base Salary:</strong> ₹{{ profile.basic_salary }}</li>
+                <li><strong>Official Joining Date:</strong> {{ profile.date_of_joining|date:"F d, Y" }}</li>
+            </ul>
+
+            <h3 class="font-bold text-slate-900 mt-6 mb-2">Key Duties & Responsibilities:</h3>
+            <div class="bg-slate-50 border-l-4 border-blue-600 p-4 mb-6 whitespace-pre-wrap text-slate-700 text-sm">{{ duties }}</div>
+
+            {% if additional_notes %}
+            <h3 class="font-bold text-slate-900 mt-6 mb-2">Additional Information:</h3>
+            <p class="text-slate-800 mb-6 whitespace-pre-wrap">{{ additional_notes }}</p>
+            {% endif %}
+
+            <p class="text-slate-800 mb-6">Your profile is now fully active. We look forward to welcoming you to the team on your joining date.</p>
+            
+            <p class="text-slate-500 text-xs mt-12 border-t border-slate-200 pt-4">Managing Director / HR<br>AEC Group</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

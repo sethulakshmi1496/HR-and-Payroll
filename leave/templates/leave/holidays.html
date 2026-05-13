@@ -49,7 +49,7 @@
                 </td>
                 <td class="p-3 text-right whitespace-nowrap">
                     <form method="post" action="{% url 'leave:holiday_toggle' h.pk %}" class="inline">{% csrf_token %}
-                        <button class="text-blue-600 hover:underline text-xs" data-testid="holiday-toggle-{{ h.pk }}">{% if h.is_active %}{% trans "Disable" %}{% else %}{% trans "Enable" %}{% endif %}</button>
+                        <button class="text-blue-600 hover:underline text-xs" data-testid="holiday-toggle-{{ h.pk }}">{% if h.is_active %}{% trans "Exclude from Payroll" %}{% else %}{% trans "Include in Payroll" %}{% endif %}</button>
                     </form>
                     <form method="post" action="{% url 'leave:holiday_delete' h.pk %}" class="inline ml-2"
                           onsubmit="return confirm('Delete this holiday?')">{% csrf_token %}

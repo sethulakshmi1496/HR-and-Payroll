@@ -2,20 +2,21 @@
 PDF generation for payslip via ReportLab.
 """
 from io import BytesIO
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak,
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
 )
 
 
-def _money(v):
+def _fmt(v):
+    """Format a Decimal/number as Indian currency string with 2dp."""
     if v is None:
         return "-"
-    return f"INR {Decimal(v):,.2f}"
+    return f"\u20b9 {Decimal(str(v)):,.2f}"
 
 
 def build_payslip_pdf(payroll) -> bytes:
@@ -48,8 +49,9 @@ def build_payslip_pdf(payroll) -> bytes:
     info = [
         ['Employee ID', profile.employee_id, 'Name', profile.user.get_full_name()],
         ['Department', profile.department.name, 'Designation', profile.designation or '-'],
-        ['Status', profile.get_probation_status_display(),
-         'Account', (profile.salary_account or profile.personal_account or '-')[-12:]],
+        ['Joined Date', profile.date_of_joining.strftime('%d-%m-%Y') if profile.date_of_joining else '-',
+         'Status', profile.get_probation_status_display()],
+        ['Account', (profile.salary_account or profile.personal_account or '-')[-12:], '', ''],
     ]
     t = Table(info, colWidths=[35 * mm, 50 * mm, 30 * mm, 65 * mm])
     t.setStyle(TableStyle([
@@ -68,25 +70,41 @@ def build_payslip_pdf(payroll) -> bytes:
     story.append(t)
     story.append(Spacer(1, 8 * mm))
 
-    # Earnings & Deductions side-by-side
+    # Compute hourly rate for display
+    daily  = Decimal(str(payroll.daily_rate))
+    hourly = (daily / Decimal('8')).quantize(Decimal('0.01'))
+
+    # Earnings — use stored earned_basic (already computed correctly)
+    earned_basic = Decimal(str(payroll.basic_salary or 0))
+    # Prefer the actual earned basic = daily * days_present
+    earned_basic_display = daily * Decimal(payroll.days_present)
+
+    ot_hours_display = f"{payroll.ot_hours} hr" if payroll.ot_hours else "0 hr"
+    deduct_other     = Decimal(str(payroll.other_deductions or 0))
+
     earnings = [
         ['Earnings', 'Amount'],
-        ['Basic (Earned)',
-         _money(Decimal(payroll.daily_rate) * Decimal(payroll.days_present))],
-        [f'Overtime ({payroll.ot_hours} hr)', _money(payroll.ot_amount)],
-        ['Incentives', _money(payroll.incentive_total)],
+        [f'Basic Earned  ({payroll.days_present} days × ₹{daily:,.2f}/day)',
+         _fmt(earned_basic_display)],
+        [f'Overtime  ({payroll.ot_hours} hr × ₹{hourly:,.2f}/hr × 2)',
+         _fmt(payroll.ot_amount)],
+        ['Incentives', _fmt(payroll.incentive_total)],
         ['', ''],
-        ['Gross Salary', _money(payroll.gross_salary)],
+        ['Gross Salary', _fmt(payroll.gross_salary)],
     ]
 
     deductions = [
         ['Deductions', 'Amount'],
-        ['Professional Tax (Kerala)', _money(payroll.pt_deduction)],
-        ['ESI (Employee 0.75%)', _money(payroll.esi_deduction)],
-        ['PF (12%)', _money(payroll.pf_deduction)],
-        ['Other', _money(payroll.other_deductions)],
-        ['Total Deductions', _money(payroll.total_deductions)],
+        ['Professional Tax (Kerala)', _fmt(payroll.pt_deduction)],
+        ['ESI (Employee 0.75%)', _fmt(payroll.esi_deduction)],
+        [f'PF (12% of Earned Basic)', _fmt(payroll.pf_deduction)],
+        ['Late / Discipline', _fmt(deduct_other) if deduct_other else '\u20b9 0.00'],
+        ['Total Deductions', _fmt(payroll.total_deductions)],
     ]
+
+    # Validate: net = gross - total_deductions (sanity check in PDF)
+    computed_net = Decimal(str(payroll.gross_salary)) - Decimal(str(payroll.total_deductions))
+    net_match    = computed_net.quantize(Decimal('0.01')) == Decimal(str(payroll.net_salary)).quantize(Decimal('0.01'))
 
     et = Table(earnings, colWidths=[55 * mm, 35 * mm])
     dt = Table(deductions, colWidths=[55 * mm, 35 * mm])
@@ -139,7 +157,7 @@ def build_payslip_pdf(payroll) -> bytes:
     story.append(Spacer(1, 8 * mm))
 
     # Net pay banner
-    net = Table([['NET PAY', _money(payroll.net_salary)]],
+    net = Table([['NET PAY', _fmt(payroll.net_salary)]],
                 colWidths=[120 * mm, 60 * mm])
     net.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#0f766e')),
@@ -153,14 +171,36 @@ def build_payslip_pdf(payroll) -> bytes:
         ('RIGHTPADDING', (0, 0), (-1, -1), 14),
     ]))
     story.append(net)
-    story.append(Spacer(1, 10 * mm))
+    story.append(Spacer(1, 6 * mm))
+
+    # Rate reference box
+    rates = [
+        ['Rate Reference', 'Value'],
+        ['Monthly Basic', _fmt(payroll.basic_salary)],
+        ['Daily Rate  (Basic ÷ 30)', _fmt(daily)],
+        ['Hourly Rate  (Daily ÷ 8)', _fmt(hourly)],
+        ['OT Rate  (Hourly × 2)', _fmt(hourly * 2)],
+    ]
+    rt = Table(rates, colWidths=[70 * mm, 40 * mm])
+    rt.setStyle(TableStyle([
+        ('BOX',        (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+        ('INNERGRID',  (0, 0), (-1, -1), 0.25, colors.HexColor('#e2e8f0')),
+        ('BACKGROUND', (0, 0), (-1, 0),  colors.HexColor('#475569')),
+        ('TEXTCOLOR',  (0, 0), (-1, 0),  colors.white),
+        ('FONTNAME',   (0, 0), (-1, 0),  'Helvetica-Bold'),
+        ('FONTNAME',   (0, 1), (0, -1),  'Helvetica-Bold'),
+        ('FONTSIZE',   (0, 0), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING',  (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+    ]))
+    story.append(rt)
+    story.append(Spacer(1, 6 * mm))
 
     foot = ParagraphStyle('foot', parent=styles['Normal'],
                           textColor=colors.HexColor('#64748b'),
                           fontSize=8, alignment=1)
-    story.append(Paragraph(
-        "This is a computer-generated payslip. AEC Group HR & Payroll System.",
-        foot))
+    story.append(Paragraph("", foot))
 
     doc.build(story)
     pdf = buffer.getvalue()

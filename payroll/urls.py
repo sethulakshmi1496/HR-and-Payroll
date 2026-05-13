@@ -16,7 +16,7 @@ app_name = 'payroll'
 
 urlpatterns = [
     path('', views.PayrollDashboardView.as_view(), name='dashboard'),
-    path('generate/', views.GenerateView.as_view(), name='generate'),
+    path('manual-adjustments/', views.ManualAdjustmentsView.as_view(), name='manual_adjustments'),
     path('approve/<int:pk>/', views.ApproveView.as_view(), name='approve'),
     path('slip/<int:year>/<int:month>/', views.SlipView.as_view(), name='slip'),
     path('tax/', views.TaxPageView.as_view(), name='tax'),

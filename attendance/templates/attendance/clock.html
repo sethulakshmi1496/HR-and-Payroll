@@ -3,6 +3,9 @@
 {% block title %}Clock In/Out - AEC Group{% endblock %}
 
 {% block content %}
+<!-- Fix for the styling error -->
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -18,11 +21,13 @@
             </div>
             <div>
                 {% if status == 'in' %}
-                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                <span
+                    class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
                     Currently Checked In
                 </span>
                 {% else %}
-                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-800">
+                <span
+                    class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-800">
                     Currently Checked Out
                 </span>
                 {% endif %}
@@ -33,16 +38,21 @@
             <!-- Map Container -->
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-2">Your Location</label>
-                <div id="map" class="h-48 w-full bg-slate-100 rounded-lg border border-slate-200"></div>
-                <p id="location-status" class="text-xs text-slate-500 mt-2">Detecting location...</p>
+                <div id="map" class="h-48 w-full bg-slate-100 rounded-lg border border-slate-200 z-0"></div>
+                <p id="location-status" class="text-xs text-slate-500 mt-2 italic">Detecting location...</p>
             </div>
 
             <!-- Webcam Container -->
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-2">Face Verification</label>
-                <div class="relative bg-black rounded-lg overflow-hidden border border-slate-200 w-full h-48 flex items-center justify-center">
+                <div
+                    class="relative bg-black rounded-lg overflow-hidden border border-slate-200 w-full h-64 flex items-center justify-center">
                     <video id="video" class="h-full w-full object-cover" autoplay muted playsinline></video>
                     <canvas id="canvas" class="hidden"></canvas>
+                    <div id="webcam-error"
+                        class="hidden absolute inset-0 flex items-center justify-center bg-slate-900 text-white p-4 text-center text-sm">
+                        Webcam access denied or unavailable.
+                    </div>
                 </div>
             </div>
 
@@ -54,14 +64,28 @@
                 <input type="hidden" id="action" name="action">
 
                 {% if status == 'out' %}
-                <button type="button" onclick="submitAttendance('in')" class="flex-1 bg-blue-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-all flex justify-center items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
-                    Clock In
+                <button type="button" id="submit-btn" onclick="submitAttendance('in')"
+                    class="flex-1 bg-blue-600 text-white font-medium py-4 px-4 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-all flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span id="btn-text" class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1">
+                            </path>
+                        </svg>
+                        Clock In
+                    </span>
                 </button>
                 {% else %}
-                <button type="button" onclick="submitAttendance('out')" class="flex-1 bg-red-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-red-700 focus:ring-4 focus:ring-red-200 transition-all flex justify-center items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                    Clock Out
+                <button type="button" id="submit-btn" onclick="submitAttendance('out')"
+                    class="flex-1 bg-red-600 text-white font-medium py-4 px-4 rounded-lg hover:bg-red-700 focus:ring-4 focus:ring-red-200 transition-all flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span id="btn-text" class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1">
+                            </path>
+                        </svg>
+                        Clock Out
+                    </span>
                 </button>
                 {% endif %}
             </form>
@@ -74,61 +98,91 @@
     const deptLat = {{ department.latitude|default:"null" }};
     const deptLon = {{ department.longitude|default:"null" }};
 
-    // Initialize Map
-    if (deptLat && deptLon) {
-        map = L.map('map').setView([deptLat, deptLon], 15);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        L.circle([deptLat, deptLon], { radius: 100, color: 'blue', fillColor: '#3b82f6', fillOpacity: 0.2 }).addTo(map);
-    } else {
-        map = L.map('map').setView([9.931233, 76.267303], 13); // Default Kochi
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    // 1. Initialize Map
+    function initMap() {
+        const startLat = deptLat || 9.9312;
+        const startLon = deptLon || 76.2673;
+
+        map = L.map('map').setView([startLat, startLon], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        if (deptLat && deptLon) {
+            L.circle([deptLat, deptLon], {
+                radius: 100,
+                color: '#3b82f6',
+                fillColor: '#3b82f6',
+                fillOpacity: 0.1
+            }).addTo(map);
+        }
+
+        // Fix for gray tiles
+        setTimeout(() => map.invalidateSize(), 400);
     }
 
-    // Get Location
+    initMap();
+
+    // 2. Get Location
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition((position) => {
             userLat = position.coords.latitude;
             userLon = position.coords.longitude;
             document.getElementById('lat').value = userLat;
             document.getElementById('lon').value = userLon;
-            
+
             map.setView([userLat, userLon], 16);
-            if(marker) map.removeLayer(marker);
+            if (marker) map.removeLayer(marker);
             marker = L.marker([userLat, userLon]).addTo(map);
-            document.getElementById('location-status').innerText = "Location detected.";
-        }, () => {
-            document.getElementById('location-status').innerText = "Location access denied. IP will be used.";
+            document.getElementById('location-status').innerText = "Location detected successfully.";
+            document.getElementById('location-status').classList.remove('text-slate-500');
+            document.getElementById('location-status').classList.add('text-green-600');
+        }, (err) => {
+            document.getElementById('location-status').innerText = "Location access denied. Please enable GPS.";
+            document.getElementById('location-status').classList.add('text-red-500');
         });
     }
 
-    // Setup Webcam
+    // 3. Setup Webcam
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
+    const webcamError = document.getElementById('webcam-error');
+
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({ video: true }).then(function(stream) {
-            video.srcObject = stream;
-            video.play();
-        });
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+            .then(function (stream) {
+                video.srcObject = stream;
+            })
+            .catch(function (err) {
+                console.error("Webcam Error:", err);
+                webcamError.classList.remove('hidden');
+            });
     }
 
-    // Submit Action
+    // 4. Submit Action
     function submitAttendance(action) {
+        const btn = document.getElementById('submit-btn');
+        const btnText = document.getElementById('btn-text');
+
+        // Visual feedback
+        btn.disabled = true;
+        btnText.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Processing...`;
+
         document.getElementById('action').value = action;
-        
-        // Capture Face image safely
+
+        // Capture Face image
         try {
-            if (video.videoWidth > 0 && video.videoHeight > 0) {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
                 const context = canvas.getContext('2d');
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                document.getElementById('face_image').value = canvas.toDataURL('image/jpeg', 0.8);
+                document.getElementById('face_image').value = canvas.toDataURL('image/jpeg', 0.7);
             }
-        } catch(e) {
-            console.log("Webcam capture skipped or failed:", e);
+        } catch (e) {
+            console.warn("Face capture failed, proceeding without image.");
         }
 
-        // Submit via Fetch
         const form = document.getElementById('attendance-form');
         const formData = new FormData(form);
 
@@ -140,22 +194,22 @@
                 'X-CSRFToken': formData.get('csrfmiddlewaretoken')
             }
         })
-        .then(response => {
-            if (!response.ok) { throw new Error('Network response was not ok'); }
-            return response.json();
-        })
-        .then(data => {
-            if(data.success) {
-                alert(data.message + (data.is_valid ? " (Valid Location)" : " (Out of Geofence)"));
-                window.location.reload();
-            } else {
-                alert("Error: " + data.message);
-            }
-        })
-        .catch(err => {
-            alert("A server error occurred. Please check console.");
-            console.error(err);
-        });
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message + (data.is_valid ? " (Valid Geofence)" : " (Outside Geofence)"));
+                    window.location.href = "{% url 'attendance:dashboard' %}";
+                } else {
+                    alert("Error: " + data.message);
+                    btn.disabled = false;
+                    btnText.innerText = action === 'in' ? 'Clock In' : 'Clock Out';
+                }
+            })
+            .catch(err => {
+                alert("A server error occurred. Please try again.");
+                console.error(err);
+                btn.disabled = false;
+            });
     }
 </script>
 {% endblock %}

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; margin: 0; padding: 0; background: #f8fafc;">
+    <div style="max-width: 620px; margin: 40px auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.08);">
+
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #1e40af, #2563eb); padding: 32px 40px; text-align: center;">
+            <h1 style="color: #fff; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">
+                AEC Group
+            </h1>
+            <p style="color: #bfdbfe; margin: 6px 0 0; font-size: 13px;">Official Offer Letter</p>
+        </div>
+
+        <!-- Body -->
+        <div style="padding: 36px 40px;">
+            <h2 style="color: #1e40af; margin: 0 0 16px; font-size: 20px;">Welcome to AEC Group!</h2>
+
+            <p style="margin: 0 0 16px;">Dear <strong>{{ profile.user.get_full_name }}</strong>,</p>
+
+            <p style="margin: 0 0 16px;">
+                Following the successful verification of your onboarding documents, we are delighted to
+                officially offer you the position of <strong>{{ profile.designation }}</strong> within the
+                <strong>{{ profile.department.name }}</strong> department.
+            </p>
+
+            <!-- Employment Details -->
+            <div style="background: #f0f9ff; border-left: 4px solid #2563eb; border-radius: 6px; padding: 20px 24px; margin: 24px 0;">
+                <h3 style="margin: 0 0 12px; font-size: 14px; color: #1e40af; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Employment Details
+                </h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 5px 0; font-size: 14px; color: #64748b; width: 40%;">Employment Type</td>
+                        <td style="padding: 5px 0; font-size: 14px; font-weight: 600; color: #0f172a;">
+                            {{ profile.get_probation_status_display }}
+                        </td>
+                    </tr>
+                    {% if probation_duration %}
+                    <tr>
+                        <td style="padding: 5px 0; font-size: 14px; color: #64748b;">Probation Duration</td>
+                        <td style="padding: 5px 0; font-size: 14px; font-weight: 600; color: #0f172a;">{{ probation_duration }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <td style="padding: 5px 0; font-size: 14px; color: #64748b;">Monthly Basic Salary</td>
+                        <td style="padding: 5px 0; font-size: 14px; font-weight: 600; color: #0f172a;">₹{{ profile.basic_salary }}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px 0; font-size: 14px; color: #64748b;">Joining Date</td>
+                        <td style="padding: 5px 0; font-size: 14px; font-weight: 600; color: #0f172a;">
+                            {{ profile.date_of_joining|date:"F d, Y" }}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Duties -->
+            <h3 style="font-size: 15px; color: #0f172a; margin: 24px 0 8px;">Key Duties &amp; Responsibilities</h3>
+            <div style="background: #f8fafc; border-left: 4px solid #e2e8f0; padding: 16px 20px; border-radius: 6px; white-space: pre-wrap; font-size: 14px; color: #334155;">{{ duties }}</div>
+
+            {% if additional_notes %}
+            <h3 style="font-size: 15px; color: #0f172a; margin: 24px 0 8px;">Additional Information</h3>
+            <p style="white-space: pre-wrap; color: #475569; font-size: 14px;">{{ additional_notes }}</p>
+            {% endif %}
+
+            <!-- Accept CTA -->
+            <div style="text-align: center; margin: 36px 0 24px;">
+                <p style="font-size: 14px; color: #475569; margin-bottom: 16px;">
+                    Please confirm your acceptance of this offer by clicking the button below.
+                </p>
+                <a href="{{ accept_url }}"
+                   style="display: inline-block; padding: 14px 36px; background: linear-gradient(135deg, #059669, #047857);
+                          color: #fff; text-decoration: none; border-radius: 10px; font-size: 16px;
+                          font-weight: 700; letter-spacing: 0.2px;">
+                    ✓ Accept This Offer
+                </a>
+                <p style="font-size: 12px; color: #94a3b8; margin-top: 12px;">
+                    Clicking this button will notify HR of your acceptance and initiate employee onboarding.
+                </p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 40px; text-align: center;">
+            <p style="margin: 0; font-size: 12px; color: #94a3b8;">
+                Managing Director / Human Resources &nbsp;|&nbsp; AEC Group<br>
+                This is an official communication. Do not reply to this email.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

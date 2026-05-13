@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accept Your Offer – AEC Group</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+            min-height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            padding: 24px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.10);
+            max-width: 560px;
+            width: 100%;
+            padding: 48px 40px;
+            text-align: center;
+        }
+        .logo {
+            font-size: 22px; font-weight: 800; color: #1e40af;
+            letter-spacing: -0.5px; margin-bottom: 32px;
+        }
+        .icon {
+            width: 72px; height: 72px;
+            background: #eff6ff; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 24px;
+        }
+        h1 { font-size: 26px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
+        .subtitle { font-size: 15px; color: #64748b; line-height: 1.6; margin-bottom: 32px; }
+        .details-box {
+            background: #f8fafc; border: 1px solid #e2e8f0;
+            border-radius: 12px; padding: 20px; text-align: left; margin-bottom: 32px;
+        }
+        .detail-row { display: flex; justify-content: space-between; padding: 6px 0;
+            border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { color: #64748b; font-weight: 500; }
+        .detail-value { color: #0f172a; font-weight: 600; }
+        form button {
+            width: 100%; padding: 14px 24px;
+            background: linear-gradient(135deg, #059669, #047857);
+            color: #fff; border: none; border-radius: 12px;
+            font-size: 16px; font-weight: 700; cursor: pointer;
+            transition: opacity 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        form button:hover { opacity: 0.92; }
+        .note { font-size: 12px; color: #94a3b8; margin-top: 16px; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="logo">AEC Group</div>
+
+    <div class="icon">
+        <svg width="36" height="36" fill="none" stroke="#2563eb" stroke-width="1.8" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+    </div>
+
+    <h1>Your Offer Letter</h1>
+    <p class="subtitle">
+        Congratulations, <strong>{{ profile.user.get_full_name }}</strong>!<br>
+        Please review your offer details below and click <strong>Accept Offer</strong>
+        to confirm your acceptance. HR will be notified immediately.
+    </p>
+
+    <div class="details-box">
+        <div class="detail-row">
+            <span class="detail-label">Position</span>
+            <span class="detail-value">{{ profile.designation|default:"—" }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Department</span>
+            <span class="detail-value">{{ profile.department.name }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Employment Type</span>
+            <span class="detail-value">{{ profile.get_probation_status_display }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Monthly Salary</span>
+            <span class="detail-value">₹{{ profile.basic_salary }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Joining Date</span>
+            <span class="detail-value">
+                {% if profile.date_of_joining %}{{ profile.date_of_joining|date:"F d, Y" }}{% else %}To Be Confirmed{% endif %}
+            </span>
+        </div>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Accept Offer
+        </button>
+    </form>
+
+    <p class="note">
+        By clicking Accept, you formally acknowledge and accept all terms mentioned in the offer letter
+        sent to your email. This action is final.
+    </p>
+</div>
+</body>
+</html>

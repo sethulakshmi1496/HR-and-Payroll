@@ -22,16 +22,13 @@ INSTALLED_APPS = [
     'rest_framework',
     'django_extensions',
     'django_q',
-    'django_otp',
-    'django_otp.plugins.otp_totp',
-    'django_otp.plugins.otp_static',
     'core',
     'onboarding',
     'attendance',
     'payroll',
     'leave',
-    'twofa',
     'assets',
+    'communications',
 ]
 
 # django-q2 — real worker via supervisor (program:qcluster). sync=True only
@@ -56,8 +53,6 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django_otp.middleware.OTPMiddleware',
-    'twofa.middleware.EnforceMD2FAMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -82,12 +77,11 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'aec_hr_superapp.wsgi.application'
 
-DATABASE_URL = config('DATABASE_URL', default='')
-if DATABASE_URL:
-    import dj_database_url
-    DATABASES = {'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600, conn_health_checks=True)}
-else:
-    DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DIR / 'db.sqlite3'}}
+DATABASE_URL = config('DATABASE_URL')
+import dj_database_url
+DATABASES = {
+    'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600, conn_health_checks=True)
+}
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -131,12 +125,17 @@ LOGOUT_REDIRECT_URL = '/accounts/login/'
 # Wildcard subdomains for *.preview.emergentagent.com & *.preview.emergentcf.cloud
 CSRF_TRUSTED_ORIGINS = config(
     'CSRF_TRUSTED_ORIGINS',
-    default='https://*.preview.emergentagent.com,https://*.preview.emergentcf.cloud,http://localhost:3000,http://localhost:8001',
+    default='https://*.preview.emergentagent.com,https://*.preview.emergentcf.cloud,http://localhost:3000,http://localhost:8001,http://localhost:8000,http://127.0.0.1:8000',
     cast=Csv(),
 )
 
-if DEBUG:
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='sethulakshmi.pydev@gmail.com')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER)
 
 GEOFENCE_RADIUS_METERS = 100
 GRACE_PERIOD_MINUTES = 15

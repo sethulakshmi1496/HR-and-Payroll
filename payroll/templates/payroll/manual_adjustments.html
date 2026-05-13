@@ -1,0 +1,110 @@
+{% extends 'onboarding/base.html' %}
+{% load static %}
+
+{% block title %}Manual Adjustments & OT Management - AEC Group{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-3xl font-bold text-slate-900">Incentives & OT Management</h1>
+    <p class="text-slate-500 mt-1">Select a department to view staff, adjust OT and Incentives, and submit for payroll generation.</p>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+    <form method="get" class="flex flex-wrap items-end gap-4">
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Month</label>
+            <select name="month" class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-40">
+                <option value="1" {% if month == 1 %}selected{% endif %}>January</option>
+                <option value="2" {% if month == 2 %}selected{% endif %}>February</option>
+                <option value="3" {% if month == 3 %}selected{% endif %}>March</option>
+                <option value="4" {% if month == 4 %}selected{% endif %}>April</option>
+                <option value="5" {% if month == 5 %}selected{% endif %}>May</option>
+                <option value="6" {% if month == 6 %}selected{% endif %}>June</option>
+                <option value="7" {% if month == 7 %}selected{% endif %}>July</option>
+                <option value="8" {% if month == 8 %}selected{% endif %}>August</option>
+                <option value="9" {% if month == 9 %}selected{% endif %}>September</option>
+                <option value="10" {% if month == 10 %}selected{% endif %}>October</option>
+                <option value="11" {% if month == 11 %}selected{% endif %}>November</option>
+                <option value="12" {% if month == 12 %}selected{% endif %}>December</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Year</label>
+            <input type="number" name="year" value="{{ year }}" class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-24">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Department</label>
+            <select name="department_id" class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-64" required>
+                <option value="">— Select Department —</option>
+                {% for d in departments %}
+                <option value="{{ d.id }}" {% if selected_dept == d.id %}selected{% endif %}>{{ d.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Load Staff</button>
+    </form>
+</div>
+
+{% if selected_dept %}
+<form method="post" action="{% url 'payroll:manual_adjustments' %}">
+    {% csrf_token %}
+    <input type="hidden" name="year" value="{{ year }}">
+    <input type="hidden" name="month" value="{{ month }}">
+    <input type="hidden" name="department_id" value="{{ selected_dept }}">
+    
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
+        <div class="px-5 py-4 border-b border-slate-100 flex justify-between items-center">
+            <h3 class="font-semibold text-slate-900">Staff List: {{ selected_dept_name }}</h3>
+            <span class="text-sm text-slate-500">Period: {{ month }}/{{ year }}</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <tr>
+                        <th class="p-3 text-left">Employee Name</th>
+                        <th class="p-3 text-left">Employee ID</th>
+                        <th class="p-3 text-right">Base Salary</th>
+                        <th class="p-3 text-right">Computed OT (hrs)</th>
+                        <th class="p-3 text-center">OT Override (hrs)</th>
+                        <th class="p-3 text-center">Incentives (₹)</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for item in employees_data %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-3 font-medium text-slate-900">{{ item.profile.user.get_full_name }}</td>
+                        <td class="p-3 text-slate-500">{{ item.profile.employee_id }}</td>
+                        <td class="p-3 text-right">₹{{ item.profile.basic_salary }}</td>
+                        <td class="p-3 text-right text-slate-500">{{ item.computed_ot }}</td>
+                        <td class="p-3 text-center">
+                            <input type="number" step="0.01" min="0" name="ot_{{ item.profile.id }}" 
+                                   class="w-24 px-2 py-1 border border-slate-300 rounded text-right text-sm"
+                                   placeholder="{{ item.computed_ot }}">
+                        </td>
+                        <td class="p-3 text-center">
+                            <input type="number" step="0.01" min="0" name="incentive_{{ item.profile.id }}" 
+                                   class="w-24 px-2 py-1 border border-slate-300 rounded text-right text-sm"
+                                   placeholder="0.00">
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="p-8 text-center text-slate-500">No active employees found in this department.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    {% if employees_data %}
+    <div class="flex justify-end mb-8">
+        <button type="submit" class="px-6 py-3 bg-emerald-600 text-white font-semibold rounded-lg shadow-sm hover:bg-emerald-700 hover:shadow-md transition-all">
+            Submit for Payroll
+        </button>
+    </div>
+    {% endif %}
+</form>
+{% endif %}
+
+{% endblock %}

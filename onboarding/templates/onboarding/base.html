@@ -1,91 +1,286 @@
-<<<<<<< HEAD
+{% load i18n static %}
 <!DOCTYPE html>
 <html lang="en">
-=======
-{% load i18n %}
-<!DOCTYPE html>
-<html lang="{{ LANGUAGE_CODE|default:'en' }}">
->>>>>>> origin/conflict_080526_1642
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}AEC HR SuperApp{% endblock %}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] {
+            display: none !important
+        }
+    </style>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-<<<<<<< HEAD
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+
+        svg {
+            width: 20px;
+            height: 20px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        aside svg {
+            width: 20px !important;
+            height: 20px !important;
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Sans Malayalam', sans-serif;
+            background-color: #f8fafc;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        /* MD Read-Only Mode */
+        body.md-readonly form:not([data-allow-md]) {
+            display: none !important;
+        }
+
+        body.md-readonly button[type="submit"]:not([data-allow-md]) {
+            display: none !important;
+        }
+
+        body.md-readonly [data-md-hide] {
+            display: none !important;
+        }
+
+        /* Sidebar Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
     </style>
 </head>
-<body class="text-slate-800 antialiased min-h-screen flex flex-col">
-    <!-- Navbar -->
-    <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <span class="text-2xl font-bold text-blue-600 tracking-tight">AEC Group</span>
-                    <span class="ml-2 text-sm font-medium text-slate-500 mt-1">| HR SuperApp</span>
-=======
-        body { font-family: 'Inter', 'Noto Sans Malayalam', sans-serif; background-color: #f8fafc; }
-    </style>
-</head>
-<body class="text-slate-800 antialiased min-h-screen flex flex-col">
-    <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16 items-center">
-                <a href="{% url 'dashboard' %}" class="flex items-center" data-testid="nav-home">
-                    <span class="text-2xl font-bold text-blue-600 tracking-tight">AEC Group</span>
-                    <span class="ml-2 text-sm font-medium text-slate-500">| HR SuperApp</span>
+
+<body
+    class="text-slate-800 antialiased min-h-screen flex bg-slate-50 {% if request.user.role == 'MD' %}md-readonly{% endif %}">
+
+    {% if request.user.is_authenticated and request.resolver_match.url_name != 'login' and
+    request.resolver_match.url_name != 'signup' %}
+    <!-- Sidebar -->
+    <aside
+        class="w-64 bg-white border-r border-slate-200 text-slate-700 flex flex-col min-h-screen fixed left-0 top-0 z-40 transition-transform shadow-sm">
+        <div class="h-16 flex items-center px-6 border-b border-slate-100 bg-slate-50/50">
+            <a href="{% url 'dashboard' %}" class="flex items-center gap-3">
+                <img src="{% static 'logo.png' %}" alt="AEC Group Logo" class="h-10 w-auto">
+                <div class="flex flex-col">
+                    <span class="text-[13px] font-semibold text-slate-800 tracking-[0.1em] leading-none uppercase">HR
+                        APP</span>
+                </div>
+            </a>
+        </div>
+
+        <div class="flex-1 overflow-y-auto py-4 custom-scrollbar">
+            <div class="px-6 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em]">Main Menu</div>
+            <nav class="space-y-1 px-3">
+                <a href="{% url 'dashboard' %}"
+                    class="flex items-center px-3 py-2 text-sm font-medium rounded-md hover:text-blue-600 hover:bg-blue-50 transition-colors {% if request.resolver_match.url_name == 'dashboard' %}bg-blue-50 text-blue-600 font-semibold{% else %}text-slate-600{% endif %}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
+                        </path>
+                    </svg>
+                    Dashboard
                 </a>
 
+                <div class="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em]">Daily
+                    Operations</div>
+
+                {% if request.user.role != 'MD' %}
+                <a href="{% url 'attendance:clock' %}"
+                    class="flex items-center px-3 py-2 text-sm font-medium rounded-md hover:text-blue-600 hover:bg-blue-50 transition-colors {% if 'attendance/clock' in request.path %}bg-blue-50 text-blue-600 font-semibold{% else %}text-slate-600{% endif %}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Clock In / Out
+                </a>
+                {% endif %}
+
+                <a href="{% url 'attendance:dashboard' %}"
+                    class="flex items-center px-3 py-2 text-sm font-medium rounded-md hover:text-blue-600 hover:bg-blue-50 transition-colors {% if 'attendance' in request.path and 'clock' not in request.path %}bg-blue-50 text-blue-600 font-semibold{% else %}text-slate-600{% endif %}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                        </path>
+                    </svg>
+                    Attendance Records
+                </a>
+
+                <a href="{% url 'leave:list' %}"
+                    class="flex items-center px-3 py-2 text-sm font-medium rounded-md hover:text-blue-600 hover:bg-blue-50 transition-colors {% if 'leave' in request.path %}bg-blue-50 text-blue-600 font-semibold{% else %}text-slate-600{% endif %}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                        </path>
+                    </svg>
+                    Leave Management
+                </a>
+
+                <div class="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em]">Personnel &
+                    Finance</div>
+
+                {% if request.user.role == 'HR' or request.user.role == 'MD' %}
+                <a href="{% url 'onboarding:staff_directory' %}"
+                    class="flex items-center px-3 py-2 text-sm font-medium rounded-md hover:text-blue-600 hover:bg-blue-50 transition-colors {% if request.resolver_match.url_name == 'staff_directory' %}bg-blue-50 text-blue-600 font-semibold{% else %}text-slate-600{% endif %}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                        </path>
+                    </svg>
+                    Staff Directory
+                </a>
+                {% else %}
+                <a href="{% url 'onboarding:my_profile' %}"
+                    class="flex items-center px-3 py-2 text-sm font-medium rounded-md hover:text-blue-600 hover:bg-blue-50 transition-colors {% if 'staff' in request.path %}bg-blue-50 text-blue-600 font-semibold{% else %}text-slate-600{% endif %}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    </svg>
+                    My Profile
+                </a>
+                {% endif %}
+
+                {% if request.user.role == 'HR' %}
+                <a href="{% url 'onboarding:onboarding_dashboard' %}"
+                    class="flex items-center px-3 py-2 text-sm font-medium rounded-md hover:text-blue-600 hover:bg-blue-50 transition-colors {% if 'onboarding' in request.path and 'staff' not in request.path %}bg-blue-50 text-blue-600 font-semibold{% else %}text-slate-600{% endif %}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z">
+                        </path>
+                    </svg>
+                    Onboarding
+                </a>
+                {% endif %}
+
+                <a href="{% url 'payroll:dashboard' %}"
+                    class="flex items-center px-3 py-2 text-sm font-medium rounded-md hover:text-blue-600 hover:bg-blue-50 transition-colors {% if 'payroll' in request.path %}bg-blue-50 text-blue-600 font-semibold{% else %}text-slate-600{% endif %}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                        </path>
+                    </svg>
+                    Payroll
+                </a>
+
+                <div class="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em]">
+                    Communication & Tools</div>
+
+                {% if request.user.role != 'MD' %}
+                <a href="{% url 'communications:inbox' %}"
+                    class="flex items-center px-3 py-2 text-sm font-medium rounded-md hover:text-blue-600 hover:bg-blue-50 transition-colors {% if 'communications/inbox' in request.path %}bg-blue-50 text-blue-600 font-semibold{% else %}text-slate-600{% endif %}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                        </path>
+                    </svg>
+                    Mail
+                </a>
+                {% endif %}
+
+                {% if request.user.role == 'HR' %}
+                <a href="{% url 'communications:send_promotion' %}"
+                    class="flex items-center px-3 py-2 text-sm font-medium rounded-md hover:text-blue-600 hover:bg-blue-50 transition-colors {% if 'communications/send_promotion' in request.path %}bg-blue-50 text-blue-600 font-semibold{% else %}text-slate-600{% endif %}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                        </path>
+                    </svg>
+                    Customised Mails
+                </a>
+                {% endif %}
+
+                <a href="{% url 'assets:dashboard' %}"
+                    class="flex items-center px-3 py-2 text-sm font-medium rounded-md hover:text-blue-600 hover:bg-blue-50 transition-colors {% if 'assets' in request.path %}bg-blue-50 text-blue-600 font-semibold{% else %}text-slate-600{% endif %}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                    </svg>
+                    Assets & NOC
+                </a>
+            </nav>
+        </div>
+
+        <div class="p-4 border-t border-slate-100 text-[10px] text-slate-400 bg-slate-50/80 text-center">
+            &copy; 2026 AEC Group
+        </div>
+    </aside>
+    {% endif %}
+
+    <div
+        class="flex-1 flex flex-col min-h-screen {% if request.user.is_authenticated and request.resolver_match.url_name != 'login' and request.resolver_match.url_name != 'signup' %}ml-64{% endif %} transition-all">
+
+        {% if request.user.is_authenticated and request.resolver_match.url_name != 'login' and
+        request.resolver_match.url_name != 'signup' %}
+        <!-- Header -->
+        <header
+            class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm h-16 flex items-center justify-between px-4 sm:px-8">
+            <div class="flex items-center">
+                <h2 class="text-lg font-semibold text-slate-800">
+                    {% block page_title %}Overview{% endblock %}
+                </h2>
+            </div>
+
+            <div class="flex items-center gap-4">
                 <div class="flex items-center gap-3">
-                    {% if request.user.is_authenticated %}
-                    <a href="{% url 'leave:list' %}" class="text-sm text-slate-600 hover:text-slate-900 hidden sm:inline">{% trans "Leave" %}</a>
-                    <a href="{% url 'attendance:dashboard' %}" class="text-sm text-slate-600 hover:text-slate-900 hidden sm:inline">{% trans "Attendance" %}</a>
-                    <a href="{% url 'payroll:dashboard' %}" class="text-sm text-slate-600 hover:text-slate-900 hidden sm:inline">{% trans "Payroll" %}</a>
+                    {% if request.user.profile_picture %}
+                    <img src="{{ request.user.profile_picture.url }}" alt="{{ request.user.get_full_name }}"
+                        class="w-8 h-8 rounded-lg object-cover border border-slate-200 shadow-sm">
+                    {% else %}
+                    <div
+                        class="w-8 h-8 rounded bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-md shadow-blue-200">
+                        {{ request.user.first_name|first|default:request.user.username|first|upper }}
+                    </div>
                     {% endif %}
-
-                    <form action="{% url 'set_language' %}" method="post" class="inline" data-testid="language-form">
-                        {% csrf_token %}
-                        <input type="hidden" name="next" value="{{ request.path }}">
-                        <select name="language" onchange="this.form.submit()" class="text-xs border border-slate-300 rounded px-2 py-1" data-testid="language-select">
-                            {% get_current_language as LANGUAGE_CODE %}
-                            <option value="en" {% if LANGUAGE_CODE == 'en' %}selected{% endif %}>EN</option>
-                            <option value="ml" {% if LANGUAGE_CODE == 'ml' %}selected{% endif %}>മലയാളം</option>
-                        </select>
+                    <form method="post" action="{% url 'logout' %}" class="inline ml-1" data-allow-md>{% csrf_token %}
+                        <button class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                            title="{% trans 'Logout' %}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1">
+                                </path>
+                            </svg>
+                        </button>
                     </form>
-
-                    {% if request.user.is_authenticated %}
-                    <span class="text-xs text-slate-500 hidden md:inline">{{ request.user.username }}</span>
-                    <form method="post" action="{% url 'logout' %}" class="inline">{% csrf_token %}
-                        <button class="text-xs text-red-600 hover:text-red-800" data-testid="nav-logout">{% trans "Logout" %}</button>
-                    </form>
-                    {% endif %}
->>>>>>> origin/conflict_080526_1642
                 </div>
             </div>
-        </div>
-    </nav>
+        </header>
+        {% endif %}
 
-<<<<<<< HEAD
-    <!-- Main Content -->
-=======
->>>>>>> origin/conflict_080526_1642
-    <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
-        {% block content %}{% endblock %}
-    </main>
+        <!-- Main Content Area -->
+        <main
+            class="flex-1 {% if request.user.is_authenticated and request.resolver_match.url_name != 'login' and request.resolver_match.url_name != 'signup' %}p-6 lg:p-10{% endif %} w-full bg-[#f8fafc]">
+            {% if messages %}
+            <div class="max-w-7xl mx-auto mb-6">
+                {% for message in messages %}
+                <div
+                    class="p-4 rounded-lg {% if message.tags == 'success' %}bg-emerald-50 text-emerald-700 border border-emerald-200{% else %}bg-blue-50 text-blue-700 border border-blue-200{% endif %} shadow-sm">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
 
-<<<<<<< HEAD
-    <!-- Footer -->
-    <footer class="bg-white border-t border-slate-200 mt-auto py-6">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-slate-500">
-            &copy; 2026 AEC Group. All rights reserved.
-=======
-    <footer class="bg-white border-t border-slate-200 mt-auto py-6">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-slate-500">
-            &copy; 2026 AEC Group. {% trans "All rights reserved." %}
->>>>>>> origin/conflict_080526_1642
-        </div>
-    </footer>
+            <div
+                class="{% if request.user.is_authenticated and request.resolver_match.url_name != 'login' and request.resolver_match.url_name != 'signup' %}max-w-7xl mx-auto{% endif %}">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
 </body>
+
 </html>

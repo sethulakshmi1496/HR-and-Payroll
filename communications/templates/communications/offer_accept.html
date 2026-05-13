@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accept Your Offer – AEC Group</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+            min-height: 100vh;
+            display: flex; align-items: flex-start; justify-content: center;
+            padding: 40px 20px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.10);
+            max-width: 580px;
+            width: 100%;
+            overflow: hidden;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #1e40af, #2563eb);
+            padding: 28px 36px; text-align: center;
+        }
+        .card-header h1 { color: #fff; font-size: 20px; font-weight: 800; }
+        .card-header p { color: #bfdbfe; font-size: 13px; margin-top: 4px; }
+        .card-body { padding: 32px 36px; }
+        .offer-box {
+            background: #f0f9ff; border: 1px solid #bae6fd;
+            border-radius: 12px; padding: 18px 20px; margin-bottom: 28px;
+        }
+        .offer-box h3 { font-size: 12px; color: #0369a1; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+        .row { display: flex; justify-content: space-between; padding: 5px 0;
+            border-bottom: 1px solid #e0f2fe; font-size: 13px; }
+        .row:last-child { border-bottom: none; }
+        .label { color: #64748b; }
+        .val { font-weight: 600; color: #0f172a; }
+        h2 { font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 16px; }
+        .form-group { margin-bottom: 16px; }
+        label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 5px; }
+        input[type=text], input[type=tel] {
+            width: 100%; padding: 10px 14px;
+            border: 1px solid #d1d5db; border-radius: 8px;
+            font-size: 14px; color: #0f172a;
+            outline: none; transition: border 0.2s;
+        }
+        input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px #dbeafe; }
+        .photo-box {
+            border: 2px dashed #d1d5db; border-radius: 10px;
+            padding: 20px; text-align: center; cursor: pointer;
+            transition: border 0.2s;
+        }
+        .photo-box:hover { border-color: #2563eb; background: #eff6ff; }
+        .photo-box p { font-size: 13px; color: #64748b; margin-top: 8px; }
+        .photo-box small { font-size: 11px; color: #9ca3af; }
+        #photo-preview { display: none; width: 80px; height: 80px;
+            border-radius: 50%; object-fit: cover; margin: 8px auto 0; border: 2px solid #2563eb; }
+        button[type=submit] {
+            width: 100%; margin-top: 24px;
+            padding: 14px; background: linear-gradient(135deg, #059669, #047857);
+            color: #fff; border: none; border-radius: 12px;
+            font-size: 16px; font-weight: 700; cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        button[type=submit]:hover { opacity: 0.9; }
+        .note { font-size: 11px; color: #9ca3af; text-align: center; margin-top: 12px; }
+        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        @media(max-width:480px){ .grid2 { grid-template-columns: 1fr; } }
+        {% if messages %}.msg { padding: 10px 14px; border-radius: 8px;
+            background: #fef2f2; border: 1px solid #fecaca;
+            color: #b91c1c; font-size: 13px; margin-bottom: 16px; }{% endif %}
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="card-header">
+        <h1>AEC Group – Your Offer Letter</h1>
+        <p>{{ offer.designation }} · {{ offer.department }}</p>
+    </div>
+
+    <div class="card-body">
+        <div class="offer-box">
+            <h3>Offer Details</h3>
+            <div class="row"><span class="label">Candidate</span><span class="val">{{ offer.candidate_name }}</span></div>
+            <div class="row"><span class="label">Position</span><span class="val">{{ offer.designation }}</span></div>
+            <div class="row"><span class="label">Department</span><span class="val">{{ offer.department }}</span></div>
+            <div class="row"><span class="label">Employment Type</span><span class="val">{{ offer.get_probation_status_display }}</span></div>
+            <div class="row"><span class="label">Monthly Salary</span><span class="val">₹{{ offer.basic_salary }}</span></div>
+            <div class="row">
+                <span class="label">Joining Date</span>
+                <span class="val">{% if offer.date_of_joining %}{{ offer.date_of_joining }}{% else %}TBD{% endif %}</span>
+            </div>
+        </div>
+
+        {% if messages %}
+        {% for msg in messages %}<div class="msg">{{ msg }}</div>{% endfor %}
+        {% endif %}
+
+        <h2>Complete Your Acceptance</h2>
+        <p style="font-size:13px;color:#64748b;margin-bottom:20px;line-height:1.6;">
+            Please confirm your details below. Your name and photo will be used to create
+            your employee profile immediately upon submission.
+        </p>
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="grid2">
+                <div class="form-group">
+                    <label>First Name <span style="color:red">*</span></label>
+                    <input type="text" name="first_name" placeholder="John" required>
+                </div>
+                <div class="form-group">
+                    <label>Last Name</label>
+                    <input type="text" name="last_name" placeholder="Doe">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Phone Number</label>
+                <input type="tel" name="phone" placeholder="+91 98765 43210">
+            </div>
+
+            <div class="form-group">
+                <label>Profile Photo <span style="font-weight:400;color:#6b7280">(recommended)</span></label>
+                <div class="photo-box" onclick="document.getElementById('photo-input').click()">
+                    <svg width="32" height="32" fill="none" stroke="#9ca3af" stroke-width="1.5"
+                         viewBox="0 0 24 24" style="margin:0 auto">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    <p>Click to upload your photo</p>
+                    <small>JPG, PNG · Max 5MB</small>
+                    <img id="photo-preview" src="" alt="Preview">
+                </div>
+                <input type="file" id="photo-input" name="photo" accept="image/*" style="display:none"
+                       onchange="previewPhoto(this)">
+            </div>
+
+            <button type="submit">✓ Accept This Offer</button>
+            <p class="note">
+                By submitting, you formally accept the offer terms. HR will review and activate your account.
+            </p>
+        </form>
+    </div>
+</div>
+
+<script>
+function previewPhoto(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            const img = document.getElementById('photo-preview');
+            img.src = e.target.result;
+            img.style.display = 'block';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+</script>
+</body>
+</html>

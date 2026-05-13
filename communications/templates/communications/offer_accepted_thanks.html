@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thank You – AEC Group</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+            min-height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            padding: 24px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.10);
+            max-width: 480px; width: 100%;
+            padding: 56px 40px; text-align: center;
+        }
+        .checkmark {
+            width: 80px; height: 80px;
+            background: #dcfce7; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 28px;
+        }
+        h1 { font-size: 28px; font-weight: 800; color: #0f172a; margin-bottom: 12px; }
+        p { font-size: 15px; color: #64748b; line-height: 1.7; }
+        .badge {
+            display: inline-block; margin-top: 24px;
+            padding: 8px 20px; background: #f0fdf4;
+            border: 1px solid #bbf7d0; border-radius: 100px;
+            font-size: 13px; color: #15803d; font-weight: 600;
+        }
+        .logo { font-size: 14px; color: #94a3b8; margin-top: 40px; font-weight: 500; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="checkmark">
+        <svg width="40" height="40" fill="none" stroke="#16a34a" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+    </div>
+
+    <h1>Offer Accepted!</h1>
+    <p>
+        Thank you, <strong>{{ profile.user.get_full_name }}</strong>.<br><br>
+        Your acceptance has been submitted to the HR team. They will verify your details
+        and activate your employee account shortly. You will receive a welcome email
+        with login credentials once the process is complete.
+    </p>
+
+    <div class="badge">✓ HR notified — Activation in progress</div>
+
+    <p class="logo">AEC Group · Human Resources</p>
+</div>
+</body>
+</html>

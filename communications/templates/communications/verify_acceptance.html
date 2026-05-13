@@ -1,0 +1,102 @@
+{% extends 'onboarding/base.html' %}
+{% block title %}Verify Acceptance - AEC Group{% endblock %}
+{% block page_title %}Verify Offer Acceptance{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto py-8">
+    <a href="{% url 'communications:inbox' %}"
+       class="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 mb-6">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+        </svg>
+        Back to Inbox
+    </a>
+
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-gradient-to-r from-emerald-600 to-teal-500 px-8 py-6 text-white">
+            <p class="text-xs font-bold uppercase tracking-widest text-emerald-200 mb-1">Offer Acceptance</p>
+            <h1 class="text-2xl font-bold">{{ mail.subject }}</h1>
+            <p class="text-emerald-100 text-sm mt-1">Received {{ mail.created_at|date:"M j, Y · g:i a" }}</p>
+        </div>
+
+        <div class="p-8">
+            <p class="text-slate-700 whitespace-pre-wrap text-sm leading-relaxed mb-8">{{ mail.body }}</p>
+
+            <!-- Candidate Profile Summary -->
+            {% if profile %}
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-8">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Candidate Profile (Auto-Created)</p>
+                <div class="flex items-start gap-5">
+                    {% if profile.user.profile_picture %}
+                    <img src="{{ profile.user.profile_picture.url }}"
+                         alt="Profile photo"
+                         class="w-16 h-16 rounded-full object-cover border-2 border-emerald-200 flex-shrink-0">
+                    {% else %}
+                    <div class="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xl flex-shrink-0">
+                        {{ profile.user.first_name|first|upper }}
+                    </div>
+                    {% endif %}
+                    <div class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm flex-1">
+                        <div>
+                            <p class="text-xs text-slate-400">Full Name</p>
+                            <p class="font-semibold text-slate-800">{{ profile.user.get_full_name }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400">Email</p>
+                            <p class="font-medium text-slate-700">{{ profile.user.email }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400">Department</p>
+                            <p class="font-medium text-slate-700">{{ profile.department.name }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400">Designation</p>
+                            <p class="font-medium text-slate-700">{{ profile.designation }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400">Employee ID</p>
+                            <p class="font-medium text-slate-700">{{ profile.employee_id }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400">Basic Salary</p>
+                            <p class="font-semibold text-slate-800">₹{{ profile.basic_salary }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Verify action -->
+            {% if not mail.is_verified %}
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-5">
+                <p class="text-sm font-semibold text-amber-800 mb-1">Action Required</p>
+                <p class="text-xs text-amber-700 mb-4">
+                    Clicking <strong>Verify &amp; Activate</strong> will set this employee as active, 
+                    assign their profile photo, and allow them to log in to the system.
+                </p>
+                <form method="post">
+                    {% csrf_token %}
+                    <button type="submit"
+                            onclick="return confirm('Activate {{ profile.user.get_full_name }} as a full employee?')"
+                            class="px-7 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-bold text-sm shadow-md transition flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Verify &amp; Activate Employee
+                    </button>
+                </form>
+            </div>
+            {% else %}
+            <div class="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-5">
+                <svg class="w-6 h-6 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <p class="text-sm font-semibold text-emerald-800">This employee has already been verified and activated.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

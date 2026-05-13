@@ -47,13 +47,20 @@
         </div>
 
         <!-- Actions -->
-        <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-end space-x-3">
-            <form method="post" class="inline">
+        <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-end space-x-3 items-center">
+            <form method="post" class="flex items-center space-x-2">
                 {% csrf_token %}
                 <input type="hidden" name="profile_id" value="{{ profile.id }}">
                 <input type="hidden" name="action" value="reject">
-                <button type="submit" class="px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 focus:ring-4 focus:ring-red-100 transition-all">
-                    Reject & Remove
+                <select name="reason_select" class="border border-red-300 text-red-700 bg-red-50 rounded px-2 py-1 text-xs" onchange="this.nextElementSibling.style.display = this.value === 'Other' ? 'block' : 'none';">
+                    <option value="Document Mismatch">Document Mismatch</option>
+                    <option value="Failed Background Check">Failed Background Check</option>
+                    <option value="Did Not Respond">Did Not Respond</option>
+                    <option value="Other">Other...</option>
+                </select>
+                <input type="text" name="reason_text" placeholder="Specify..." class="border border-red-300 rounded px-2 py-1 text-xs hidden" style="width: 120px;">
+                <button type="submit" class="px-3 py-1 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition-all">
+                    Reject
                 </button>
             </form>
             <form method="post" class="inline">
@@ -76,9 +83,6 @@
     </div>
     {% endfor %}
 </div>
-<<<<<<< HEAD
-=======
-
 <!-- Locked Profiles — HR can unlock for re-upload -->
 {% if locked_profiles %}
 <div class="mt-12">
@@ -120,5 +124,4 @@
     </div>
 </div>
 {% endif %}
->>>>>>> origin/conflict_080526_1642
 {% endblock %}
