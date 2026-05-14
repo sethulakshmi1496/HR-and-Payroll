@@ -72,136 +72,248 @@
     </form>
 </div>
 
-<!-- Department Quick-Jump Tabs -->
-{% regroup attendances by profile.department as dept_list_for_tabs %}
-<div class="flex flex-wrap gap-2 mb-4" id="dept-tabs">
-    <button onclick="showDept('all')" class="dept-tab px-4 py-1.5 rounded-full text-sm font-medium bg-slate-800 text-white transition-colors" data-dept="all">
-        All
-    </button>
-    {% for dg in dept_list_for_tabs %}
-    <button onclick="showDept('dept-{{ dg.grouper.id }}')"
-            class="dept-tab px-4 py-1.5 rounded-full text-sm font-medium bg-white border border-slate-200 text-slate-700 hover:border-blue-400 hover:text-blue-700 transition-colors"
-            data-dept="dept-{{ dg.grouper.id }}">
-        {{ dg.grouper.name }}
-        <span class="ml-1 text-xs opacity-60">({{ dg.list|length }})</span>
-    </button>
-    {% endfor %}
+<!-- Manual Attendance Entry Card -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
+    <div class="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center cursor-pointer group" onclick="toggleSection('manual-entry-body', this)">
+        <div class="flex items-center gap-2">
+            <span class="text-base">✍️</span>
+            <h3 class="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">Manual Attendance Entry</h3>
+            <span class="text-xs bg-amber-100 text-amber-800 font-semibold px-2 py-0.5 rounded ml-2">HR / Dept Head Only</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-500">Log missing clock in/out due to internet or phone complaints</span>
+            <svg class="toggle-arrow w-5 h-5 text-slate-400 transform transition-transform rotate(-90deg)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+        </div>
+    </div>
+    <div id="manual-entry-body" class="p-5" style="display: none;">
+        <form method="post" action="{% url 'attendance:manual' %}" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+            {% csrf_token %}
+            <div class="flex flex-col gap-1 md:col-span-1">
+                <label class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Employee *</label>
+                <select name="profile_id" required class="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Select Employee...</option>
+                    {% for emp in manageable_employees %}
+                    <option value="{{ emp.id }}">{{ emp.user.get_full_name }} ({{ emp.employee_id }}) — {{ emp.department.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex flex-col gap-1 md:col-span-1">
+                <label class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Date *</label>
+                <input type="date" name="date" required value="{% now 'Y-m-d' %}" class="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="flex flex-col gap-1 md:col-span-1">
+                <label class="text-xs font-semibold text-slate-600 uppercase tracking-wider">In Time *</label>
+                <input type="time" name="in_time" required value="09:00" class="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="flex flex-col gap-1 md:col-span-1">
+                <label class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Out Time (Optional)</label>
+                <input type="time" name="out_time" class="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="flex flex-col gap-1 md:col-span-1">
+                <label class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Reason / Notes *</label>
+                <input type="text" name="reason" required placeholder="e.g. Phone network issue, internet outage" class="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="md:col-span-5 flex justify-end mt-2">
+                <button type="submit" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-lg transition-colors shadow-sm">
+                    💾 Submit Manual Attendance
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 
-<!-- Department-Grouped Tables -->
-{% regroup attendances by profile.department as dept_list %}
-{% for dept in dept_list %}
-<div class="dept-section mb-6" id="dept-{{ dept.grouper.id }}">
-    <!-- Section header -->
-    <div class="flex items-center justify-between mb-2 cursor-pointer group"
-         onclick="toggleSection('section-body-{{ dept.grouper.id }}', this)">
-        <div class="flex items-center gap-3">
-            <div class="w-1 h-6 bg-blue-600 rounded-full"></div>
-            <h3 class="text-base font-bold text-slate-900 group-hover:text-blue-700 transition-colors">
-                {{ dept.grouper.name }}
-            </h3>
-            <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
-                {{ dept.list|length }} record{{ dept.list|length|pluralize }}
-            </span>
-            <span class="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">
-                {{ dept.grouper.code }}
-            </span>
-        </div>
-        <svg class="toggle-arrow w-5 h-5 text-slate-400 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-        </svg>
-    </div>
+<!-- Report Mode Selector -->
+<div class="mb-6 flex border-b border-slate-200">
+    <button onclick="switchReportMode('monthly')" id="btn-mode-monthly" class="px-6 py-3 font-bold text-sm border-b-2 border-blue-600 text-blue-600 focus:outline-none">
+        📊 Monthly Summary Report
+    </button>
+    <button onclick="switchReportMode('daily')" id="btn-mode-daily" class="px-6 py-3 font-semibold text-sm text-slate-500 border-b-2 border-transparent hover:text-slate-800 focus:outline-none">
+        📅 Daily Detailed Records
+    </button>
+</div>
 
-    <div id="section-body-{{ dept.grouper.id }}" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+<!-- MONTHLY SUMMARY REPORT CONTAINER -->
+<div id="report-container-monthly" class="block">
+    {% for summary_dept in monthly_summary_by_dept %}
+    <div class="mb-8 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+            <div>
+                <h3 class="font-bold text-slate-900 text-lg">{{ summary_dept.department.name }}</h3>
+                <p class="text-xs text-slate-500 mt-0.5">Total Working Days in selected range: <span class="font-semibold text-slate-700">{{ summary_dept.total_work_days }}</span></p>
+            </div>
+            <span class="text-xs bg-blue-100 text-blue-800 font-bold px-3 py-1 rounded-full">{{ summary_dept.emp_summaries|length }} Active Staff</span>
+        </div>
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse" data-testid="attendance-table-{{ dept.grouper.code }}">
+            <table class="w-full text-left border-collapse">
                 <thead>
-                    <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <tr class="bg-slate-100 text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
                         <th class="p-4">Employee</th>
-                        <th class="p-4">Date</th>
-                        <th class="p-4">In</th>
-                        <th class="p-4">Out</th>
-                        <th class="p-4">Hrs</th>
-                        <th class="p-4">Location / GPS</th>
-                        <th class="p-4">Source</th>
-                        <th class="p-4">Status</th>
+                        <th class="p-4">ID</th>
+                        <th class="p-4 text-center">Days Present</th>
+                        <th class="p-4 text-center">Days Absent</th>
+                        <th class="p-4 text-center">Late Occurrences</th>
+                        <th class="p-4 text-right">Attendance %</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 text-sm">
-                    {% for record in dept.list %}
-                    <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="p-4">
-                            <div class="font-medium text-slate-900">{{ record.profile.user.get_full_name }}</div>
-                            <div class="text-xs text-slate-400">{{ record.profile.employee_id }}</div>
-                        </td>
-                        <td class="p-4 text-slate-700">{{ record.date|date:"d M Y" }}</td>
-                        <td class="p-4">
-                            {% if record.in_time %}
-                            <span class="text-emerald-700 font-medium">{{ record.in_time|time:"H:i" }}</span>
-                            {% else %}
-                            <span class="text-slate-400">—</span>
-                            {% endif %}
-                        </td>
-                        <td class="p-4 text-slate-700">
-                            {% if record.out_time %}
-                            {{ record.out_time|time:"H:i" }}
-                            {% else %}
-                            <span class="text-slate-400">—</span>
-                            {% endif %}
-                        </td>
-                        <td class="p-4 text-slate-600 text-xs">
-                            {% if record.in_time and record.out_time %}
-                            {{ record.hours_worked }}h
-                            {% else %}—{% endif %}
-                        </td>
-                        <td class="p-4 text-slate-700">
-                            {% if record.location_name %}
-                            <div class="text-xs">{{ record.location_name }}</div>
-                            {% endif %}
-                            {% if record.gps_latitude and record.gps_longitude %}
-                            <span class="text-xs text-blue-600 border border-blue-200 bg-blue-50 px-1 rounded">
-                                {{ record.gps_latitude|floatformat:4 }}, {{ record.gps_longitude|floatformat:4 }}
-                            </span>
-                            {% endif %}
-                        </td>
-                        <td class="p-4 text-slate-500 text-xs">{{ record.get_source_display }}</td>
-                        <td class="p-4">
-                            <div class="flex flex-wrap gap-1">
-                                {% if record.in_time %}
-                                    {% if record.is_valid %}
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">✓ Valid</span>
-                                    {% else %}
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">✗ Invalid</span>
-                                    {% endif %}
-                                {% else %}
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">Absent</span>
-                                {% endif %}
-                                {% if record.is_late %}
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                                    Late {{ record.late_minutes }}m
-                                </span>
-                                {% endif %}
-                            </div>
+                    {% for emp_sum in summary_dept.emp_summaries %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-4 font-medium text-slate-900">{{ emp_sum.employee.user.get_full_name }}</td>
+                        <td class="p-4 text-slate-500 text-xs">{{ emp_sum.employee.employee_id }}</td>
+                        <td class="p-4 text-center font-semibold text-emerald-700">{{ emp_sum.days_present }}</td>
+                        <td class="p-4 text-center {% if emp_sum.days_absent > 0 %}text-rose-600 font-semibold{% else %}text-slate-400{% endif %}">{{ emp_sum.days_absent }}</td>
+                        <td class="p-4 text-center {% if emp_sum.late_count > 0 %}text-amber-600 font-semibold{% else %}text-slate-400{% endif %}">{{ emp_sum.late_count }}</td>
+                        <td class="p-4 text-right font-bold {% if emp_sum.att_percentage >= 80 %}text-emerald-700{% elif emp_sum.att_percentage >= 50 %}text-amber-600{% else %}text-rose-600{% endif %}">
+                            {{ emp_sum.att_percentage }}%
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
-                <tfoot class="bg-slate-50 border-t border-slate-200">
-                    <tr class="text-xs font-semibold text-slate-600">
-                        <td colspan="8" class="p-3 pl-4">
-                            {{ dept.list|length }} total records · {{ date_from|date:"d M" }} – {{ date_to|date:"d M Y" }}
-                        </td>
-                    </tr>
-                </tfoot>
             </table>
         </div>
     </div>
+    {% empty %}
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center text-slate-500 mb-6">
+        No active department summary available for the selected filters.
+    </div>
+    {% endfor %}
 </div>
-{% empty %}
-<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center text-slate-500 mb-6">
-    No attendance records found for the selected filters.
+
+<!-- DAILY DETAILED RECORDS CONTAINER -->
+<div id="report-container-daily" class="hidden">
+    <!-- Department Quick-Jump Tabs -->
+    {% regroup attendances by profile.department as dept_list_for_tabs %}
+    <div class="flex flex-wrap gap-2 mb-4" id="dept-tabs">
+        <button onclick="showDept('all')" class="dept-tab px-4 py-1.5 rounded-full text-sm font-medium bg-slate-800 text-white transition-colors" data-dept="all">
+            All
+        </button>
+        {% for dg in dept_list_for_tabs %}
+        <button onclick="showDept('dept-{{ dg.grouper.id }}')"
+                class="dept-tab px-4 py-1.5 rounded-full text-sm font-medium bg-white border border-slate-200 text-slate-700 hover:border-blue-400 hover:text-blue-700 transition-colors"
+                data-dept="dept-{{ dg.grouper.id }}">
+            {{ dg.grouper.name }}
+            <span class="ml-1 text-xs opacity-60">({{ dg.list|length }})</span>
+        </button>
+        {% endfor %}
+    </div>
+
+    <!-- Department-Grouped Tables -->
+    {% regroup attendances by profile.department as dept_list %}
+    {% for dept in dept_list %}
+    <div class="dept-section mb-6" id="dept-{{ dept.grouper.id }}">
+        <!-- Section header -->
+        <div class="flex items-center justify-between mb-2 cursor-pointer group"
+             onclick="toggleSection('section-body-{{ dept.grouper.id }}', this)">
+            <div class="flex items-center gap-3">
+                <div class="w-1 h-6 bg-blue-600 rounded-full"></div>
+                <h3 class="text-base font-bold text-slate-900 group-hover:text-blue-700 transition-colors">
+                    {{ dept.grouper.name }}
+                </h3>
+                <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
+                    {{ dept.list|length }} record{{ dept.list|length|pluralize }}
+                </span>
+                <span class="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">
+                    {{ dept.grouper.code }}
+                </span>
+            </div>
+            <svg class="toggle-arrow w-5 h-5 text-slate-400 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+        </div>
+
+        <div id="section-body-{{ dept.grouper.id }}" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse" data-testid="attendance-table-{{ dept.grouper.code }}">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                            <th class="p-4">Employee</th>
+                            <th class="p-4">Date</th>
+                            <th class="p-4">In</th>
+                            <th class="p-4">Out</th>
+                            <th class="p-4">Hrs</th>
+                            <th class="p-4">Location / GPS</th>
+                            <th class="p-4">Source</th>
+                            <th class="p-4">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-sm">
+                        {% for record in dept.list %}
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="p-4">
+                                <div class="font-medium text-slate-900">{{ record.profile.user.get_full_name }}</div>
+                                <div class="text-xs text-slate-400">{{ record.profile.employee_id }}</div>
+                            </td>
+                            <td class="p-4 text-slate-700">{{ record.date|date:"d M Y" }}</td>
+                            <td class="p-4">
+                                {% if record.in_time %}
+                                <span class="text-emerald-700 font-medium">{{ record.in_time|time:"H:i" }}</span>
+                                {% else %}
+                                <span class="text-slate-400">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="p-4 text-slate-700">
+                                {% if record.out_time %}
+                                {{ record.out_time|time:"H:i" }}
+                                {% else %}
+                                <span class="text-slate-400">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="p-4 text-slate-600 text-xs">
+                                {% if record.in_time and record.out_time %}
+                                {{ record.hours_worked }}h
+                                {% else %}—{% endif %}
+                            </td>
+                            <td class="p-4 text-slate-700">
+                                {% if record.location_name %}
+                                <div class="text-xs">{{ record.location_name }}</div>
+                                {% endif %}
+                                {% if record.gps_latitude and record.gps_longitude %}
+                                <span class="text-xs text-blue-600 border border-blue-200 bg-blue-50 px-1 rounded">
+                                    {{ record.gps_latitude|floatformat:4 }}, {{ record.gps_longitude|floatformat:4 }}
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="p-4 text-slate-500 text-xs">{{ record.get_source_display }}</td>
+                            <td class="p-4">
+                                <div class="flex flex-wrap gap-1">
+                                    {% if record.in_time %}
+                                        {% if record.is_valid %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">✓ Valid</span>
+                                        {% else %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">✗ Invalid</span>
+                                        {% endif %}
+                                    {% else %}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">Absent</span>
+                                    {% endif %}
+                                    {% if record.is_late %}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                                        Late {{ record.late_minutes }}m
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="bg-slate-50 border-t border-slate-200">
+                        <tr class="text-xs font-semibold text-slate-600">
+                            <td colspan="8" class="p-3 pl-4">
+                                {{ dept.list|length }} total records · {{ date_from|date:"d M" }} – {{ date_to|date:"d M Y" }}
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center text-slate-500 mb-6">
+        No attendance records found for the selected filters.
+    </div>
+    {% endfor %}
 </div>
-{% endfor %}
 
 {% else %}
 <!-- Staff personal view -->
@@ -347,6 +459,26 @@
         const hidden = body.style.display === 'none';
         body.style.display = hidden ? '' : 'none';
         if (arrow) arrow.style.transform = hidden ? '' : 'rotate(-90deg)';
+    };
+
+    window.switchReportMode = function(mode) {
+        if (mode === 'monthly') {
+            document.getElementById('report-container-monthly').classList.remove('hidden');
+            document.getElementById('report-container-monthly').classList.add('block');
+            document.getElementById('report-container-daily').classList.remove('block');
+            document.getElementById('report-container-daily').classList.add('hidden');
+
+            document.getElementById('btn-mode-monthly').className = "px-6 py-3 font-bold text-sm border-b-2 border-blue-600 text-blue-600 focus:outline-none";
+            document.getElementById('btn-mode-daily').className = "px-6 py-3 font-semibold text-sm text-slate-500 border-b-2 border-transparent hover:text-slate-800 focus:outline-none";
+        } else {
+            document.getElementById('report-container-daily').classList.remove('hidden');
+            document.getElementById('report-container-daily').classList.add('block');
+            document.getElementById('report-container-monthly').classList.remove('block');
+            document.getElementById('report-container-monthly').classList.add('hidden');
+
+            document.getElementById('btn-mode-daily').className = "px-6 py-3 font-bold text-sm border-b-2 border-blue-600 text-blue-600 focus:outline-none";
+            document.getElementById('btn-mode-monthly').className = "px-6 py-3 font-semibold text-sm text-slate-500 border-b-2 border-transparent hover:text-slate-800 focus:outline-none";
+        }
     };
 })();
 </script>

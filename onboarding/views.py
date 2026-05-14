@@ -321,7 +321,7 @@ def onboarding_success(request):
 def onboarding_dashboard(request):
     from core.models import EmployeeProfile
 
-    verified_candidates = EmployeeProfile.objects.filter(onboarding_status='VERIFIED').select_related('user', 'department')
+    verified_candidates = EmployeeProfile.objects.filter(onboarding_status__in=['VERIFIED', 'ACCEPTED']).select_related('user', 'department')
     rejected_candidates = EmployeeProfile.objects.filter(onboarding_status='REJECTED').select_related('user', 'department')
 
     # Candidates who submitted the onboarding form and are waiting for HR review
@@ -419,7 +419,7 @@ def staff_directory(request):
         profiles = EmployeeProfile.objects.filter(department=dept).select_related('user')
         probation   = list(profiles.filter(probation_status='PROBATION', is_active=True))
         permanent   = list(profiles.filter(probation_status='PERMANENT', is_active=True))
-        terminated  = list(profiles.filter(is_active=False).exclude(onboarding_status='VERIFIED'))
+        terminated  = list(profiles.filter(probation_status='TERMINATED'))
         total = len(probation) + len(permanent) + len(terminated)
         if total > 0:
             staff_by_department.append({

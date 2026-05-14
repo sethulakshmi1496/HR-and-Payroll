@@ -174,11 +174,12 @@ class DashboardView(LoginRequiredMixin, View):
         user = request.user
         context = {}
 
-        if user.role in [User.Role.MD, User.Role.HR]:
+        if user.role in [User.Role.MD, User.Role.HR, User.Role.DEPT_HEAD]:
             from core.models import Department
             import datetime
 
             today = timezone.now().date()
+            first_of_month = today.replace(day=1)
 
             # --- Filters ---
             dept_filter = request.GET.get('dept_filter', '')
@@ -186,9 +187,9 @@ class DashboardView(LoginRequiredMixin, View):
             date_to_str = request.GET.get('date_to', '')
 
             try:
-                date_from = datetime.date.fromisoformat(date_from_str) if date_from_str else today
+                date_from = datetime.date.fromisoformat(date_from_str) if date_from_str else first_of_month
             except ValueError:
-                date_from = today
+                date_from = first_of_month
             try:
                 date_to = datetime.date.fromisoformat(date_to_str) if date_to_str else today
             except ValueError:
@@ -202,6 +203,12 @@ class DashboardView(LoginRequiredMixin, View):
                 date__gte=date_from, date__lte=date_to
             ).select_related('profile__user', 'profile__department')
 
+            if user.role == User.Role.DEPT_HEAD:
+                depts = Department.objects.filter(is_active=True, head=user).order_by('name')
+                qs = qs.filter(profile__department__in=depts)
+            else:
+                depts = Department.objects.filter(is_active=True).order_by('name')
+
             if dept_filter:
                 qs = qs.filter(profile__department_id=dept_filter)
 
@@ -214,8 +221,13 @@ class DashboardView(LoginRequiredMixin, View):
             context['dept_filter'] = dept_filter
 
             # Departments for filter dropdown
-            depts = Department.objects.filter(is_active=True).order_by('name')
             context['departments'] = depts
+
+            # Manageable employees for manual attendance entry
+            if user.role == User.Role.DEPT_HEAD:
+                context['manageable_employees'] = EmployeeProfile.objects.filter(is_active=True, department__in=depts).select_related('user').order_by('user__first_name')
+            else:
+                context['manageable_employees'] = EmployeeProfile.objects.filter(is_active=True).select_related('user').order_by('user__first_name')
 
             # Heatmap aggregation: per department -> present vs total active (always today)
             today_att = Attendance.objects.filter(date=today).select_related(
@@ -237,6 +249,48 @@ class DashboardView(LoginRequiredMixin, View):
             context['heatmap_labels'] = labels
             context['heatmap_present'] = presents
             context['heatmap_total'] = totals
+
+            # --- Monthly Summary Department-wise Report ---
+            monthly_summary_by_dept = []
+            target_depts = depts.filter(id=dept_filter) if dept_filter else depts
+
+            for dept in target_depts:
+                work_days_set = set(dept.get_work_days_list())
+                curr_date = date_from
+                total_work_days = 0
+                while curr_date <= date_to:
+                    if curr_date.weekday() in work_days_set:
+                        total_work_days += 1
+                    curr_date += datetime.timedelta(days=1)
+
+                dept_employees = dept.employees.filter(is_active=True).select_related('user')
+                dept_att = qs.filter(profile__department=dept)
+
+                emp_summaries = []
+                for emp in dept_employees:
+                    emp_att = dept_att.filter(profile=emp)
+                    days_present = emp_att.filter(in_time__isnull=False).count()
+                    days_absent = max(0, total_work_days - days_present)
+                    late_count = emp_att.filter(is_late=True).count()
+                    att_percentage = round((days_present / total_work_days * 100)) if total_work_days > 0 else 0
+
+                    emp_summaries.append({
+                        'employee': emp,
+                        'days_present': days_present,
+                        'days_absent': days_absent,
+                        'late_count': late_count,
+                        'total_work_days': total_work_days,
+                        'att_percentage': att_percentage,
+                    })
+
+                if emp_summaries:
+                    monthly_summary_by_dept.append({
+                        'department': dept,
+                        'emp_summaries': emp_summaries,
+                        'total_work_days': total_work_days,
+                    })
+
+            context['monthly_summary_by_dept'] = monthly_summary_by_dept
 
         else:
             # Staff View: Personal history
@@ -297,3 +351,91 @@ class LivePresenceView(LoginRequiredMixin, View):
             'total': totals,
             'markers': markers,
         })
+
+
+class ManualAttendanceView(LoginRequiredMixin, View):
+    def post(self, request):
+        from django.contrib import messages
+        import datetime
+
+        if request.user.role not in [User.Role.MD, User.Role.HR, User.Role.DEPT_HEAD]:
+            messages.error(request, "Unauthorized access.")
+            return redirect('attendance:dashboard')
+
+        profile_id = request.POST.get('profile_id')
+        date_str = request.POST.get('date')
+        in_time_str = request.POST.get('in_time')
+        out_time_str = request.POST.get('out_time')
+        reason = request.POST.get('reason', '').strip()
+
+        if not (profile_id and date_str and in_time_str):
+            messages.error(request, "Employee, Date, and In Time are required.")
+            return redirect('attendance:dashboard')
+
+        try:
+            target_profile = EmployeeProfile.objects.get(pk=profile_id, is_active=True)
+        except EmployeeProfile.DoesNotExist:
+            messages.error(request, "Selected employee profile not found.")
+            return redirect('attendance:dashboard')
+
+        # Check permissions for DEPT_HEAD
+        if request.user.role == User.Role.DEPT_HEAD:
+            if target_profile.department.head != request.user:
+                messages.error(request, "You can only edit attendance for your own department staff.")
+                return redirect('attendance:dashboard')
+
+        # Parse date and times
+        try:
+            att_date = datetime.date.fromisoformat(date_str)
+            in_time_parsed = datetime.datetime.combine(att_date, datetime.time.fromisoformat(in_time_str))
+            in_time_aware = timezone.make_aware(in_time_parsed) if timezone.is_naive(in_time_parsed) else in_time_parsed
+            
+            out_time_aware = None
+            if out_time_str:
+                out_time_parsed = datetime.datetime.combine(att_date, datetime.time.fromisoformat(out_time_str))
+                out_time_aware = timezone.make_aware(out_time_parsed) if timezone.is_naive(out_time_parsed) else out_time_parsed
+        except ValueError:
+            messages.error(request, "Invalid date or time format.")
+            return redirect('attendance:dashboard')
+
+        attendance, created = Attendance.objects.get_or_create(
+            profile=target_profile,
+            date=att_date,
+            defaults={
+                'source': Attendance.ClockSource.MANUAL,
+            }
+        )
+
+        attendance.in_time = in_time_aware
+        attendance.out_time = out_time_aware
+        attendance.source = Attendance.ClockSource.MANUAL
+        attendance.is_valid = True
+
+        # Check late logic
+        from datetime import time
+        local_in_time = timezone.localtime(attendance.in_time).time()
+        if local_in_time > time(9, 15) and not target_profile.department.is_cinema:
+            attendance.is_late = True
+        else:
+            attendance.is_late = False
+
+        # Note format requested by user
+        role_display = request.user.get_role_display()
+        note = f"Manually added by {request.user.get_full_name()} ({role_display}). Reason: {reason}"
+        attendance.location_name = note[:200]
+        attendance.save()
+
+        # Log audit action
+        from core.models import AuditLog
+        try:
+            AuditLog.objects.create(
+                profile=target_profile,
+                performed_by=request.user,
+                action=AuditLog.ActionType.ATTENDANCE_IN,
+                details={'note': note, 'date': date_str, 'in_time': in_time_str, 'out_time': out_time_str}
+            )
+        except Exception:
+            pass
+
+        messages.success(request, f"Manual attendance successfully logged for {target_profile.user.get_full_name()} on {date_str}.")
+        return redirect('attendance:dashboard')
