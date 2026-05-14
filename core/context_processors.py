@@ -81,10 +81,13 @@ def breadcrumbs(request):
 def active_user_profile(request):
     """
     Finds the active EmployeeProfile and corresponding profile picture URL
-    for the logged-in user, prioritizing direct associations to avoid mismatches
-    when test/demo accounts share the same developer email address.
+    for the logged-in user. Explicitly returns None for Managing Director (MD)
+    to prevent displaying seeded staff photos.
     """
     if getattr(request, 'user', None) and request.user.is_authenticated:
+        if request.user.role == 'MD':
+            return {'resolved_profile_picture_url': None}
+
         # 1. First check if the logged in user has a profile picture directly
         if request.user.profile_picture:
             try:
@@ -103,21 +106,6 @@ def active_user_profile(request):
                         pass
         except Exception:
             pass
-            
-        # 3. Only if email is present and NOT a shared developer email, check fallback by email
-        if request.user.email and request.user.email not in ['sethulakshmi1496@gmail.com', 'sethulakshmi.pydev@gmail.com', 'admin@aec.com']:
-            try:
-                from core.models import EmployeeProfile, User
-                profile = EmployeeProfile.objects.filter(
-                    user__email=request.user.email
-                ).exclude(user__profile_picture='').first()
-                if profile and profile.user.profile_picture:
-                    try:
-                        return {'resolved_profile_picture_url': profile.user.profile_picture.url}
-                    except ValueError:
-                        pass
-            except Exception:
-                pass
             
     return {'resolved_profile_picture_url': None}
 
