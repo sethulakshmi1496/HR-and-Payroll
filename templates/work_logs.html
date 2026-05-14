@@ -6,8 +6,13 @@
     <!-- Header -->
     <div class="flex items-center justify-between mb-8">
         <div>
+            {% if request.user.role == 'MD' %}
+            <h1 class="text-3xl font-bold text-slate-900">Department-Wise Daily Log Reports</h1>
+            <p class="text-slate-500 mt-1">Comprehensive tracking of daily accomplishments across all AEC Group business units.</p>
+            {% else %}
             <h1 class="text-3xl font-bold text-slate-900">Daily Work Log Book</h1>
             <p class="text-slate-500 mt-1">Submit your daily work status and track department accomplishments.</p>
+            {% endif %}
         </div>
         <a href="{% url 'dashboard' %}" class="px-4 py-2 text-xs font-bold uppercase tracking-widest bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition">
             ← Back to Dashboard
@@ -53,7 +58,7 @@
     {% endif %}
 
     <!-- Department-Wise Daily Log Report (MD / HR / DEPT_HEAD View) -->
-    {% if department_work_logs %}
+    {% if request.user.role in 'MD,HR,DEPT_HEAD' %}
     <div class="mb-8">
         <div class="flex items-center justify-between mb-6">
             <h3 class="text-sm font-bold text-slate-900 uppercase tracking-widest flex items-center gap-2">
@@ -63,6 +68,7 @@
             <span class="text-xs text-slate-500 font-medium">Today's Submissions</span>
         </div>
 
+        {% if department_work_logs %}
         <div class="space-y-6">
             {% for dept_name, logs in department_work_logs.items %}
             <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
@@ -95,6 +101,11 @@
             </div>
             {% endfor %}
         </div>
+        {% else %}
+        <div class="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400 font-medium shadow-sm">
+            No daily work logs have been submitted across departments yet today.
+        </div>
+        {% endif %}
     </div>
     {% endif %}
 </div>
