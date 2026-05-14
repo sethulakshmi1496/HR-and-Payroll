@@ -33,6 +33,7 @@
     </div>
     {% endif %}
 
+    {% if request.user.role != 'MD' %}
     <!-- 1. Staff Section: My Assigned Tasks -->
     <div>
         <div class="flex items-center justify-between mb-6">
@@ -98,6 +99,7 @@
             </table>
         </div>
     </div>
+    {% endif %}
 
     {% if is_manager %}
     <!-- 2. Manager Section: Assign New Task Form -->
