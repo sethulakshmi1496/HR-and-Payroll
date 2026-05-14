@@ -81,3 +81,10 @@ memory/test_credentials.md
 # Mobile development
 android-sdk/db.sqlite3
 .DS_Store
+
+
+__pycache__/
+*.py[cod]
+.env
+media/
+venv/

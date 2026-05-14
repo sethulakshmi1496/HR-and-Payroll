@@ -660,6 +660,97 @@ def staff_detail(request, profile_id=None):
         if not profile:
             raise Http404("No employee profile found for this account.")
 
+    # Handle POST request for updating email and password
+    if request.method == 'POST' and request.POST.get('action') == 'update_credentials':
+        # Verify that the logged-in user is viewing their own profile page to change credentials
+        is_own_profile = (profile.user.email == request.user.email)
+        if not is_own_profile:
+            messages.error(request, "You can only change your own credentials.")
+            return redirect('onboarding:my_profile')
+
+        new_email = request.POST.get('new_email', '').strip().lower()
+        new_password = request.POST.get('new_password', '').strip()
+        current_password = request.POST.get('current_password', '').strip()
+
+        # 1. Basic validation
+        if not new_email:
+            messages.error(request, "Email address is required.")
+            return redirect('onboarding:my_profile')
+
+        # 2. Check current password
+        if not request.user.check_password(current_password):
+            messages.error(request, "Incorrect current password. Verification failed.")
+            return redirect('onboarding:my_profile')
+
+        # 3. Check if new email is already in use by another person
+        from core.models import User
+        if User.objects.filter(email=new_email).exclude(email=request.user.email).exists():
+            messages.error(request, "This email address is already in use.")
+            return redirect('onboarding:my_profile')
+
+        # 4. Find all users sharing the old email
+        old_email = request.user.email
+        users_to_update = list(User.objects.filter(email=old_email))
+
+        # Generate unique username base for the logged-in user
+        base_username = new_email.split('@')[0]
+        new_username = base_username
+        c = 1
+        while User.objects.filter(username=new_username).exclude(id=request.user.id).exists():
+            new_username = f"{base_username}{c}"
+            c += 1
+
+        # 5. Update email (and username of currently logged-in user) and password
+        for u in users_to_update:
+            u.email = new_email
+            if u.id == request.user.id:
+                u.username = new_username
+            if new_password:
+                u.set_password(new_password)
+            u.save()
+
+        # 6. Keep session active
+        if new_password:
+            from django.contrib.auth import update_session_auth_hash
+            update_session_auth_hash(request, request.user)
+
+        messages.success(request, f"✅ Your email has been successfully updated to {new_email}. Your new sign-in ID is '{new_username}'.")
+        return redirect('onboarding:my_profile')
+
+    if request.method == 'POST' and request.POST.get('action') == 'update_personal_details':
+        wedding_anniversary = request.POST.get('wedding_anniversary') or None
+        spouse_name = request.POST.get('spouse_name', '').strip()
+        blood_group = request.POST.get('blood_group', '').strip()
+        hobbies = request.POST.get('hobbies', '').strip()
+        dob = request.POST.get('date_of_birth') or None
+        phone = request.POST.get('phone', '').strip()
+        address = request.POST.get('address', '').strip()
+        emergency_contact = request.POST.get('emergency_contact', '').strip()
+
+        profile.wedding_anniversary = wedding_anniversary
+        profile.spouse_name = spouse_name
+        profile.blood_group = blood_group
+        profile.hobbies = hobbies
+        profile.address = address
+        profile.emergency_contact = emergency_contact
+        profile.save()
+
+        profile.user.phone = phone
+        if dob:
+            profile.user.date_of_birth = dob
+        profile.user.save()
+
+        try:
+            from core.wishes_service import ensure_daily_wishes_and_alerts
+            ensure_daily_wishes_and_alerts()
+        except Exception:
+            pass
+
+        messages.success(request, "✅ Personal details and automated wishes configuration successfully updated.")
+        if request.resolver_match.url_name == 'my_profile':
+            return redirect('onboarding:my_profile')
+        return redirect('onboarding:staff_detail', profile_id=profile.id)
+
     today = date.today()
 
     # Last 5 attendance records

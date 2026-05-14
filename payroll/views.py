@@ -67,12 +67,20 @@ class PayrollDashboardView(LoginRequiredMixin, View):
         is_manager = u.role in [User.Role.HR, User.Role.MD]
         is_md = u.role == User.Role.MD
 
+        # Department filter (managers only)
+        dept_filter = request.GET.get('dept_filter', '')
+
         if is_manager:
-            payrolls = Payroll.objects.filter(
+            payrolls_qs = Payroll.objects.filter(
                 month__year=year, month__month=month
             ).select_related('profile__user', 'profile__department').order_by(
                 'profile__department__name', 'profile__employee_id'
             )
+            if dept_filter:
+                payrolls_qs = payrolls_qs.filter(profile__department_id=dept_filter)
+
+            payrolls = payrolls_qs
+
             incentives = Incentive.objects.filter(
                 month__year=year, month__month=month
             ).select_related('profile__user', 'created_by').order_by('-created_at')
@@ -80,19 +88,34 @@ class PayrollDashboardView(LoginRequiredMixin, View):
             history_qs = Payroll.objects.filter(status__in=[
                 Payroll.Status.HR_APPROVED, Payroll.Status.FINALIZED
             ]).order_by('month')
+
+            # Build department groups for template
+            from collections import OrderedDict
+            dept_groups = OrderedDict()
+            for p in payrolls:
+                dept_name = p.profile.department.name if p.profile.department else 'Unassigned'
+                dept_obj = p.profile.department
+                if dept_name not in dept_groups:
+                    dept_groups[dept_name] = {'dept': dept_obj, 'payrolls': [], 'total_net': Decimal('0')}
+                dept_groups[dept_name]['payrolls'].append(p)
+                dept_groups[dept_name]['total_net'] += Decimal(p.net_salary)
+
+            departments = Department.objects.filter(is_active=True).order_by('name')
         else:
             # Robust fetch by email for staff to handle multi-account confusion
             base_qs = Payroll.objects.filter(
                 profile__user__email=u.email
             ).select_related('profile__user', 'profile__department').order_by('-month')
-            
+
             payrolls = base_qs[:12]
-            
+
             incentives = Incentive.objects.filter(
                 profile__user__email=u.email
             ).select_related('profile__user').order_by('-month')[:12]
-            
+
             employees = []
+            dept_groups = {}
+            departments = []
             history_qs = base_qs.filter(status__in=[Payroll.Status.HR_APPROVED, Payroll.Status.FINALIZED])
 
         # Aggregate Chart.js data: total net by month
@@ -109,6 +132,9 @@ class PayrollDashboardView(LoginRequiredMixin, View):
             'year': year,
             'month': month,
             'payrolls': payrolls,
+            'dept_groups': dept_groups,
+            'departments': departments,
+            'dept_filter': dept_filter,
             'incentives': incentives,
             'employees': employees,
             'history_labels': history_labels,

@@ -13,7 +13,7 @@
         </div>
     </div>
     <div class="flex items-center gap-3">
-        {% if request.user.role == 'HR' or request.user.role == 'MD' %}
+        {% if request.user.role == 'HR' and profile.user.email != request.user.email or request.user.role == 'MD' and profile.user.email != request.user.email %}
         <button class="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">Edit Profile</button>
         {% endif %}
     </div>
@@ -123,12 +123,16 @@
     <!-- RIGHT COLUMN: Professional Details & Stats -->
     <div class="lg:col-span-2 space-y-8">
         <!-- Professional Tabs -->
-        <div x-data="{ tab: 'overview' }" class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-            <div class="flex border-b border-slate-100 bg-slate-50">
+        <div x-data="{ tab: 'personal' }" class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+            <div class="flex flex-wrap border-b border-slate-100 bg-slate-50">
                 <button @click="tab='overview'" :class="tab==='overview' ? 'border-b-2 border-violet-600 text-violet-700 bg-white' : 'text-slate-500'" class="flex-1 px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors duration-200">Overview</button>
                 <button @click="tab='attendance'" :class="tab==='attendance' ? 'border-b-2 border-violet-600 text-violet-700 bg-white' : 'text-slate-500'" class="flex-1 px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors duration-200">Attendance</button>
                 <button @click="tab='leaves'" :class="tab==='leaves' ? 'border-b-2 border-violet-600 text-violet-700 bg-white' : 'text-slate-500'" class="flex-1 px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors duration-200">Leaves</button>
                 <button @click="tab='team'" :class="tab==='team' ? 'border-b-2 border-violet-600 text-violet-700 bg-white' : 'text-slate-500'" class="flex-1 px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors duration-200">Team</button>
+                <button @click="tab='personal'" :class="tab==='personal' ? 'border-b-2 border-violet-600 text-violet-700 bg-white' : 'text-slate-500'" class="flex-1 px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors duration-200">Personal Details</button>
+                {% if request.user.email|lower == profile.user.email|lower or request.resolver_match.url_name == 'my_profile' %}
+                <button @click="tab='security'" :class="tab==='security' ? 'border-b-2 border-violet-600 text-violet-700 bg-white' : 'text-slate-500'" class="flex-1 px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors duration-200">Security</button>
+                {% endif %}
             </div>
 
             <!-- Overview Tab -->
@@ -277,6 +281,119 @@
                 </div>
                 {% endif %}
             </div>
+
+            <!-- Personal Details Tab -->
+            <div x-show="tab==='personal'" class="p-6" x-cloak>
+                <div class="max-w-2xl">
+                    <h4 class="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                        Personal Details & Automated Wishes
+                    </h4>
+                    <p class="text-xs text-slate-500 mb-6">Enter your birthday, wedding anniversary, and hobbies. Automated congratulatory wishes and announcement alerts will be generated and dispatched on your special days.</p>
+                    
+                    <form method="post" class="space-y-4">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_personal_details">
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">Date of Birth <span class="text-xs">🎂</span></label>
+                                <input type="date" name="date_of_birth" value="{{ profile.user.date_of_birth|date:'Y-m-d' }}"
+                                    class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none text-slate-700 bg-slate-50 focus:bg-white transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">Wedding Anniversary <span class="text-xs">💍</span></label>
+                                <input type="date" name="wedding_anniversary" value="{{ profile.wedding_anniversary|date:'Y-m-d' }}"
+                                    class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none text-slate-700 bg-slate-50 focus:bg-white transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">Spouse Name</label>
+                                <input type="text" name="spouse_name" value="{{ profile.spouse_name }}" placeholder="Spouse name"
+                                    class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none text-slate-700 bg-slate-50 focus:bg-white transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">Blood Group</label>
+                                <input type="text" name="blood_group" value="{{ profile.blood_group }}" placeholder="e.g. O+, A-, B+"
+                                    class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none text-slate-700 bg-slate-50 focus:bg-white transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">Phone Number</label>
+                                <input type="text" name="phone" value="{{ profile.user.phone }}" placeholder="Phone number"
+                                    class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none text-slate-700 bg-slate-50 focus:bg-white transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">Emergency Contact</label>
+                                <input type="text" name="emergency_contact" value="{{ profile.emergency_contact }}" placeholder="Emergency phone"
+                                    class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none text-slate-700 bg-slate-50 focus:bg-white transition-all">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">Residential Address</label>
+                                <textarea name="address" rows="2" placeholder="Full residential address"
+                                    class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none text-slate-700 bg-slate-50 focus:bg-white transition-all">{{ profile.address }}</textarea>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">Hobbies & Interests</label>
+                                <textarea name="hobbies" rows="2" placeholder="Hobbies, favorite activities, etc."
+                                    class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none text-slate-700 bg-slate-50 focus:bg-white transition-all">{{ profile.hobbies }}</textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="pt-3">
+                            <button type="submit"
+                                class="px-6 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold text-xs uppercase tracking-widest rounded-xl hover:shadow-lg hover:shadow-indigo-100 transition duration-200">
+                                Save Personal Details
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Security Tab -->
+            {% if profile.user.email == request.user.email %}
+            <div x-show="tab==='security'" class="p-6" x-cloak>
+                <div class="max-w-xl">
+                    <h4 class="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 00-2 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                        Change Credentials
+                    </h4>
+                    <p class="text-xs text-slate-500 mb-6">Update your email address (your sign-in ID) and your system password. This will automatically update all associated records with zero session interruption.</p>
+                    
+                    <form method="post" class="space-y-4" data-allow-md>
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_credentials">
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">New Email Address</label>
+                                <input type="email" name="new_email" value="{{ profile.user.email }}" required
+                                    class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none text-slate-700 bg-slate-50 focus:bg-white transition-all">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">New Password <span class="text-slate-400 font-normal">(Optional)</span></label>
+                                <input type="password" name="new_password" placeholder="••••••••"
+                                    class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none text-slate-700 bg-slate-50 focus:bg-white transition-all">
+                            </div>
+                        </div>
+                        
+                        <div class="pt-4 border-t border-slate-100">
+                            <label class="block text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">Verify Current Password <span class="text-rose-500">*</span></label>
+                            <input type="password" name="current_password" required placeholder="Enter current password to authorize changes"
+                                class="w-full md:w-1/2 px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none text-slate-700 bg-slate-50 focus:bg-white transition-all">
+                        </div>
+                        
+                        <div class="pt-2">
+                            <button type="submit"
+                                class="px-6 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold text-xs uppercase tracking-widest rounded-xl hover:shadow-lg hover:shadow-indigo-100 transition duration-200">
+                                Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Documentation Card -->

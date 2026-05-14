@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'leave',
     'assets',
     'communications',
+    'notifications',
 ]
 
 # django-q2 — real worker via supervisor (program:qcluster). sync=True only
@@ -71,6 +72,9 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'core.context_processors.breadcrumbs',
+                'notifications.context_processors.notification_count',
+                'core.context_processors.active_user_profile',
+                'core.context_processors.global_wishes_and_alerts',
             ],
         },
     },

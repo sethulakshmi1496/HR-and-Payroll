@@ -173,25 +173,60 @@ class DashboardView(LoginRequiredMixin, View):
     def get(self, request):
         user = request.user
         context = {}
-        
-        if user.role in [User.Role.MD, User.Role.HR]:
-            # MD/HR View: All attendance for today with Heatmap data
-            from core.models import Department
-            today = timezone.now().date()
-            todays = Attendance.objects.filter(date=today).select_related(
-                'profile__user', 'profile__department'
-            ).order_by('profile__department__name', '-in_time')
-            context['attendances'] = todays
-            context['is_manager'] = True
 
-            # Heatmap aggregation: per department -> present vs total active
+        if user.role in [User.Role.MD, User.Role.HR]:
+            from core.models import Department
+            import datetime
+
+            today = timezone.now().date()
+
+            # --- Filters ---
+            dept_filter = request.GET.get('dept_filter', '')
+            date_from_str = request.GET.get('date_from', '')
+            date_to_str = request.GET.get('date_to', '')
+
+            try:
+                date_from = datetime.date.fromisoformat(date_from_str) if date_from_str else today
+            except ValueError:
+                date_from = today
+            try:
+                date_to = datetime.date.fromisoformat(date_to_str) if date_to_str else today
+            except ValueError:
+                date_to = today
+
+            # Clamp ordering
+            if date_from > date_to:
+                date_from, date_to = date_to, date_from
+
+            qs = Attendance.objects.filter(
+                date__gte=date_from, date__lte=date_to
+            ).select_related('profile__user', 'profile__department')
+
+            if dept_filter:
+                qs = qs.filter(profile__department_id=dept_filter)
+
+            qs = qs.order_by('profile__department__name', 'profile__employee_id', '-date')
+
+            context['attendances'] = qs
+            context['is_manager'] = True
+            context['date_from'] = date_from
+            context['date_to'] = date_to
+            context['dept_filter'] = dept_filter
+
+            # Departments for filter dropdown
             depts = Department.objects.filter(is_active=True).order_by('name')
+            context['departments'] = depts
+
+            # Heatmap aggregation: per department -> present vs total active (always today)
+            today_att = Attendance.objects.filter(date=today).select_related(
+                'profile__department'
+            )
             labels, presents, totals = [], [], []
             for d in depts:
                 total_emp = d.employees.filter(is_active=True).count()
                 if total_emp == 0:
                     continue
-                present_emp = todays.filter(
+                present_emp = today_att.filter(
                     profile__department=d,
                     in_time__isnull=False,
                     is_valid=True,
@@ -202,6 +237,7 @@ class DashboardView(LoginRequiredMixin, View):
             context['heatmap_labels'] = labels
             context['heatmap_present'] = presents
             context['heatmap_total'] = totals
+
         else:
             # Staff View: Personal history
             try:
@@ -211,7 +247,7 @@ class DashboardView(LoginRequiredMixin, View):
             except EmployeeProfile.DoesNotExist:
                 context['attendances'] = []
                 context['is_manager'] = False
-                
+
         return render(request, 'attendance/dashboard.html', context)
 
 

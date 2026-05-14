@@ -387,6 +387,12 @@ def verify_acceptance(request, mail_id):
             mail_type='OFFER_ACCEPTANCE',
         ).update(is_verified=True)
 
+        try:
+            from core.wishes_service import trigger_onboarding_wish
+            trigger_onboarding_wish(profile)
+        except Exception:
+            pass
+
         messages.success(
             request,
             f"✅ {profile.user.get_full_name()} activated as employee (ID: {profile.employee_id}). "
@@ -439,6 +445,13 @@ def generate_promotion_letter(request):
                 body=body,
                 mail_type='PROMOTION',
             )
+
+            try:
+                from core.wishes_service import trigger_promotion_wish
+                trigger_promotion_wish(employee, new_designation)
+            except Exception:
+                pass
+
             messages.success(
                 request,
                 f"Promotion letter for {employee.user.get_full_name()} sent successfully."

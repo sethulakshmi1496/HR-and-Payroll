@@ -86,7 +86,7 @@
 <div class="mb-4">{% for m in messages %}<div class="mb-2 p-3 rounded-lg text-sm bg-blue-50 border border-blue-200 text-blue-800">{{ m }}</div>{% endfor %}</div>
 {% endif %}
 
-{% if is_manager and not is_md %}
+{% if is_manager %}
 <h2 class="text-xl font-bold text-slate-900 mb-3 mt-8">{% trans "Pending Leave Requests" %} ({{ pending|length }})</h2>
 {% regroup pending by profile.department as pending_dept_list %}
 {% for dept in pending_dept_list %}
@@ -117,13 +117,13 @@
                     {% endif %}
                 </td>
                 <td class="p-3 text-right whitespace-nowrap">
-                    <form method="post" action="{% url 'leave:decision' l.pk %}" class="inline">
+                    <form method="post" action="{% url 'leave:decision' l.pk %}" class="inline" data-allow-md>
                         {% csrf_token %}
-                        <button name="action" value="approve" class="text-emerald-700 hover:underline text-xs" data-testid="leave-approve-{{ l.pk }}">{% trans "Approve" %}</button>
-                        <button name="action" value="reject" class="ml-2 text-red-600 hover:underline text-xs" data-testid="leave-reject-{{ l.pk }}">{% trans "Reject" %}</button>
+                        <button name="action" value="approve" class="text-emerald-700 hover:underline text-xs" data-testid="leave-approve-{{ l.pk }}" data-allow-md>{% trans "Approve" %}</button>
+                        <button name="action" value="reject" class="ml-2 text-red-600 hover:underline text-xs" data-testid="leave-reject-{{ l.pk }}" data-allow-md>{% trans "Reject" %}</button>
                     </form>
                     {% if approvers %}
-                    <form method="post" action="{% url 'leave:decision' l.pk %}" class="inline ml-2">
+                    <form method="post" action="{% url 'leave:decision' l.pk %}" class="inline ml-2" data-allow-md>
                         {% csrf_token %}
                         <input type="hidden" name="action" value="redirect">
                         <select name="redirect_to" class="text-xs border border-slate-300 rounded px-1 py-0.5" onchange="if(this.value) this.form.submit()" data-testid="leave-redirect-{{ l.pk }}">

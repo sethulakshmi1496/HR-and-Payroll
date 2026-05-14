@@ -76,3 +76,74 @@ def breadcrumbs(request):
         crumbs[-1] = {'label': crumbs[-1]['label']}
 
     return {'zh_breadcrumbs': crumbs}
+
+
+def active_user_profile(request):
+    """
+    Finds the active EmployeeProfile and corresponding profile picture URL
+    for the logged-in user by email address, resolving inconsistencies from
+    duplicate accounts.
+    """
+    if getattr(request, 'user', None) and request.user.is_authenticated:
+        from core.models import EmployeeProfile, User
+        from django.db.models import F
+        
+        # 1. First check if the logged in user has a profile picture directly
+        if request.user.profile_picture:
+            try:
+                return {'resolved_profile_picture_url': request.user.profile_picture.url}
+            except ValueError:
+                pass
+            
+        # 2. Otherwise, resolve the active EmployeeProfile by email address
+        try:
+            profile = EmployeeProfile.objects.filter(
+                user__email=request.user.email
+            ).select_related('user').order_by(
+                F('date_of_joining').desc(nulls_last=True),
+                F('designation').desc(nulls_last=True),
+                '-id'
+            ).first()
+            
+            if profile and profile.user.profile_picture:
+                try:
+                    return {'resolved_profile_picture_url': profile.user.profile_picture.url}
+                except ValueError:
+                    pass
+        except Exception:
+            pass
+            
+        # 3. If no image found in any related account, check if any user with this email has a picture
+        try:
+            u = User.objects.filter(email=request.user.email).exclude(profile_picture='').exclude(profile_picture=None).first()
+            if u and u.profile_picture:
+                try:
+                    return {'resolved_profile_picture_url': u.profile_picture.url}
+                except ValueError:
+                    pass
+        except Exception:
+            pass
+            
+    return {'resolved_profile_picture_url': None}
+
+
+def global_wishes_and_alerts(request):
+    """
+    Ensures daily automated wishes (birthdays, anniversaries) are generated,
+    and returns active wish notifications to the template context.
+    """
+    if getattr(request, 'user', None) and request.user.is_authenticated:
+        try:
+            from core.wishes_service import ensure_daily_wishes_and_alerts
+            ensure_daily_wishes_and_alerts()
+            
+            from notifications.models import Notification
+            wish_notifs = Notification.objects.filter(
+                is_active=True,
+                notification_type__in=['BIRTHDAY_WISH', 'ANNIVERSARY_WISH', 'ONBOARDING_WISH', 'PROMOTION_WISH']
+            ).select_related('target_profile__user', 'target_profile__department').order_by('-created_at')
+            
+            return {'active_wish_notifications': wish_notifs}
+        except Exception:
+            pass
+    return {'active_wish_notifications': []}

@@ -3,19 +3,17 @@
 {% block title %}Attendance Dashboard - AEC Group{% endblock %}
 
 {% block content %}
-<!-- Fix for the CDN error: Ensure Tailwind is loaded -->
 <script src="https://cdn.tailwindcss.com"></script>
-
-<!-- External Assets -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-<div class="mb-8 flex flex-wrap items-end justify-between gap-4">
+<!-- Page Header -->
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
         <h1 class="text-3xl font-bold text-slate-900">Attendance Dashboard</h1>
         <p class="text-slate-500 text-sm mt-1">
-            {% if is_manager %}Today's attendance across all departments.{% else %}Your recent attendance history.{% endif %}
+            {% if is_manager %}Department-wise attendance overview.{% else %}Your recent attendance history.{% endif %}
         </p>
     </div>
     <a href="{% url 'attendance:clock' %}" class="px-5 py-2.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors" data-testid="goto-clock">
@@ -25,11 +23,11 @@
 
 {% if is_manager %}
 <p class="text-xs text-slate-500 mb-3">
-    Auto-refresh every 30s · Last update: <span id="live-stamp" data-testid="live-stamp">{% now "H:i:s" %}</span>
+    Auto-refresh heatmap every 30s · Last update: <span id="live-stamp" data-testid="live-stamp">{% now "H:i:s" %}</span>
 </p>
 
-<!-- Department Heatmap & Live Map -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+<!-- Heatmap + Live Map -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
     <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-5" data-testid="heatmap-card">
         <h3 class="font-semibold text-slate-900 mb-4">Today — Department Presence</h3>
         <div class="relative h-64 w-full">
@@ -43,14 +41,78 @@
         <div id="dashboard-map" class="h-72 w-full z-0"></div>
     </div>
 </div>
-{% endif %}
 
-<!-- History Table -->
-{% if is_manager %}
-    {% regroup attendances by profile.department as dept_list %}
-    {% for dept in dept_list %}
-    <h3 class="text-lg font-bold text-slate-900 mt-6 mb-3">{{ dept.grouper.name }}</h3>
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
+<!-- Filter Bar -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+    <form method="get" id="att-filter-form" class="flex flex-wrap items-end gap-3">
+        <div class="flex flex-col gap-1">
+            <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Department</label>
+            <select name="dept_filter" onchange="document.getElementById('att-filter-form').submit()"
+                    class="px-3 py-2 border border-slate-300 rounded-lg text-sm min-w-[180px] focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">All Departments</option>
+                {% for dept in departments %}
+                <option value="{{ dept.id }}" {% if dept_filter|stringformat:"s" == dept.id|stringformat:"s" %}selected{% endif %}>
+                    {{ dept.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="flex flex-col gap-1">
+            <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">From</label>
+            <input type="date" name="date_from" value="{{ date_from|date:'Y-m-d' }}"
+                   class="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div class="flex flex-col gap-1">
+            <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">To</label>
+            <input type="date" name="date_to" value="{{ date_to|date:'Y-m-d' }}"
+                   class="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <button type="submit" class="px-4 py-2 bg-slate-800 text-white text-sm rounded-lg hover:bg-slate-700 transition-colors">Filter</button>
+        <a href="{% url 'attendance:dashboard' %}" class="px-4 py-2 border border-slate-300 text-slate-600 text-sm rounded-lg hover:bg-slate-50 transition-colors">Reset</a>
+    </form>
+</div>
+
+<!-- Department Quick-Jump Tabs -->
+{% regroup attendances by profile.department as dept_list_for_tabs %}
+<div class="flex flex-wrap gap-2 mb-4" id="dept-tabs">
+    <button onclick="showDept('all')" class="dept-tab px-4 py-1.5 rounded-full text-sm font-medium bg-slate-800 text-white transition-colors" data-dept="all">
+        All
+    </button>
+    {% for dg in dept_list_for_tabs %}
+    <button onclick="showDept('dept-{{ dg.grouper.id }}')"
+            class="dept-tab px-4 py-1.5 rounded-full text-sm font-medium bg-white border border-slate-200 text-slate-700 hover:border-blue-400 hover:text-blue-700 transition-colors"
+            data-dept="dept-{{ dg.grouper.id }}">
+        {{ dg.grouper.name }}
+        <span class="ml-1 text-xs opacity-60">({{ dg.list|length }})</span>
+    </button>
+    {% endfor %}
+</div>
+
+<!-- Department-Grouped Tables -->
+{% regroup attendances by profile.department as dept_list %}
+{% for dept in dept_list %}
+<div class="dept-section mb-6" id="dept-{{ dept.grouper.id }}">
+    <!-- Section header -->
+    <div class="flex items-center justify-between mb-2 cursor-pointer group"
+         onclick="toggleSection('section-body-{{ dept.grouper.id }}', this)">
+        <div class="flex items-center gap-3">
+            <div class="w-1 h-6 bg-blue-600 rounded-full"></div>
+            <h3 class="text-base font-bold text-slate-900 group-hover:text-blue-700 transition-colors">
+                {{ dept.grouper.name }}
+            </h3>
+            <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
+                {{ dept.list|length }} record{{ dept.list|length|pluralize }}
+            </span>
+            <span class="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">
+                {{ dept.grouper.code }}
+            </span>
+        </div>
+        <svg class="toggle-arrow w-5 h-5 text-slate-400 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+        </svg>
+    </div>
+
+    <div id="section-body-{{ dept.grouper.id }}" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse" data-testid="attendance-table-{{ dept.grouper.code }}">
                 <thead>
@@ -59,7 +121,8 @@
                         <th class="p-4">Date</th>
                         <th class="p-4">In</th>
                         <th class="p-4">Out</th>
-                        <th class="p-4">Location/GPS</th>
+                        <th class="p-4">Hrs</th>
+                        <th class="p-4">Location / GPS</th>
                         <th class="p-4">Source</th>
                         <th class="p-4">Status</th>
                     </tr>
@@ -67,88 +130,139 @@
                 <tbody class="divide-y divide-slate-100 text-sm">
                     {% for record in dept.list %}
                     <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="p-4 font-medium text-slate-900">
-                            {{ record.profile.user.get_full_name }} 
-                            <span class="text-xs text-slate-500 block">{{ record.profile.employee_id }}</span>
+                        <td class="p-4">
+                            <div class="font-medium text-slate-900">{{ record.profile.user.get_full_name }}</div>
+                            <div class="text-xs text-slate-400">{{ record.profile.employee_id }}</div>
                         </td>
-                        <td class="p-4 text-slate-700">{{ record.date }}</td>
-                        <td class="p-4 text-slate-700">{{ record.in_time|time:"H:i"|default:"-" }}</td>
-                        <td class="p-4 text-slate-700">{{ record.out_time|time:"H:i"|default:"-" }}</td>
+                        <td class="p-4 text-slate-700">{{ record.date|date:"d M Y" }}</td>
+                        <td class="p-4">
+                            {% if record.in_time %}
+                            <span class="text-emerald-700 font-medium">{{ record.in_time|time:"H:i" }}</span>
+                            {% else %}
+                            <span class="text-slate-400">—</span>
+                            {% endif %}
+                        </td>
                         <td class="p-4 text-slate-700">
-                            {% if record.location_name %}{{ record.location_name }}<br>{% endif %}
+                            {% if record.out_time %}
+                            {{ record.out_time|time:"H:i" }}
+                            {% else %}
+                            <span class="text-slate-400">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-4 text-slate-600 text-xs">
+                            {% if record.in_time and record.out_time %}
+                            {{ record.hours_worked }}h
+                            {% else %}—{% endif %}
+                        </td>
+                        <td class="p-4 text-slate-700">
+                            {% if record.location_name %}
+                            <div class="text-xs">{{ record.location_name }}</div>
+                            {% endif %}
                             {% if record.gps_latitude and record.gps_longitude %}
-                            <span class="text-xs text-blue-600 border border-blue-200 bg-blue-50 px-1 rounded">{{ record.gps_latitude|floatformat:4 }}, {{ record.gps_longitude|floatformat:4 }}</span>
+                            <span class="text-xs text-blue-600 border border-blue-200 bg-blue-50 px-1 rounded">
+                                {{ record.gps_latitude|floatformat:4 }}, {{ record.gps_longitude|floatformat:4 }}
+                            </span>
                             {% endif %}
                         </td>
                         <td class="p-4 text-slate-500 text-xs">{{ record.get_source_display }}</td>
                         <td class="p-4">
-                            {% if record.is_valid %}
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Valid</span>
-                            {% else %}
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Invalid</span>
-                            {% endif %}
-                            {% if record.is_late %}
-                                <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Late ({{ record.late_minutes }}m)</span>
-                            {% endif %}
+                            <div class="flex flex-wrap gap-1">
+                                {% if record.in_time %}
+                                    {% if record.is_valid %}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">✓ Valid</span>
+                                    {% else %}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">✗ Invalid</span>
+                                    {% endif %}
+                                {% else %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">Absent</span>
+                                {% endif %}
+                                {% if record.is_late %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    Late {{ record.late_minutes }}m
+                                </span>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
+                <tfoot class="bg-slate-50 border-t border-slate-200">
+                    <tr class="text-xs font-semibold text-slate-600">
+                        <td colspan="8" class="p-3 pl-4">
+                            {{ dept.list|length }} total records · {{ date_from|date:"d M" }} – {{ date_to|date:"d M Y" }}
+                        </td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
     </div>
-    {% empty %}
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center text-slate-500 mb-6">
-        No attendance records found.
-    </div>
-    {% endfor %}
+</div>
+{% empty %}
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center text-slate-500 mb-6">
+    No attendance records found for the selected filters.
+</div>
+{% endfor %}
+
 {% else %}
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse" data-testid="attendance-table">
-                <thead>
-                    <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                        <th class="p-4">Date</th>
-                        <th class="p-4">In</th>
-                        <th class="p-4">Out</th>
-                        <th class="p-4">Location/GPS</th>
-                        <th class="p-4">Source</th>
-                        <th class="p-4">Status</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 text-sm">
-                    {% for record in attendances %}
-                    <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="p-4 text-slate-700">{{ record.date }}</td>
-                        <td class="p-4 text-slate-700">{{ record.in_time|time:"H:i"|default:"-" }}</td>
-                        <td class="p-4 text-slate-700">{{ record.out_time|time:"H:i"|default:"-" }}</td>
-                        <td class="p-4 text-slate-700">
-                            {% if record.location_name %}{{ record.location_name }}<br>{% endif %}
-                            {% if record.gps_latitude and record.gps_longitude %}
-                            <span class="text-xs text-blue-600 border border-blue-200 bg-blue-50 px-1 rounded">{{ record.gps_latitude|floatformat:4 }}, {{ record.gps_longitude|floatformat:4 }}</span>
-                            {% endif %}
-                        </td>
-                        <td class="p-4 text-slate-500 text-xs">{{ record.get_source_display }}</td>
-                        <td class="p-4">
-                            {% if record.is_valid %}
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Valid</span>
-                            {% else %}
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Invalid</span>
-                            {% endif %}
-                            {% if record.is_late %}
-                                <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Late ({{ record.late_minutes }}m)</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="6" class="p-8 text-center text-slate-500">No attendance records found.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+<!-- Staff personal view -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse" data-testid="attendance-table">
+            <thead>
+                <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <th class="p-4">Date</th>
+                    <th class="p-4">In</th>
+                    <th class="p-4">Out</th>
+                    <th class="p-4">Hrs</th>
+                    <th class="p-4">Location / GPS</th>
+                    <th class="p-4">Source</th>
+                    <th class="p-4">Status</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-sm">
+                {% for record in attendances %}
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="p-4 text-slate-700 font-medium">{{ record.date|date:"d M Y" }}</td>
+                    <td class="p-4">
+                        {% if record.in_time %}
+                        <span class="text-emerald-700 font-medium">{{ record.in_time|time:"H:i" }}</span>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td class="p-4 text-slate-700">{{ record.out_time|time:"H:i"|default:"—" }}</td>
+                    <td class="p-4 text-slate-600 text-xs">
+                        {% if record.in_time and record.out_time %}{{ record.hours_worked }}h{% else %}—{% endif %}
+                    </td>
+                    <td class="p-4 text-slate-700">
+                        {% if record.location_name %}{{ record.location_name }}<br>{% endif %}
+                        {% if record.gps_latitude and record.gps_longitude %}
+                        <span class="text-xs text-blue-600 border border-blue-200 bg-blue-50 px-1 rounded">
+                            {{ record.gps_latitude|floatformat:4 }}, {{ record.gps_longitude|floatformat:4 }}
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="p-4 text-slate-500 text-xs">{{ record.get_source_display }}</td>
+                    <td class="p-4">
+                        {% if record.is_valid %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Valid</span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Invalid</span>
+                        {% endif %}
+                        {% if record.is_late %}
+                        <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                            Late {{ record.late_minutes }}m
+                        </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="p-8 text-center text-slate-500">No attendance records found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
+</div>
 {% endif %}
 
 {% if is_manager %}
@@ -157,16 +271,11 @@
     let heatmapChart, dashboardMap;
     const palette = (r) => r >= 80 ? '#10b981' : r >= 50 ? '#f59e0b' : '#ef4444';
 
-    // 1. Map Initialization
-    // Coordinates set to a default view, zoom level 12
     dashboardMap = L.map('dashboard-map').setView([9.9312, 76.2673], 12);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
     }).addTo(dashboardMap);
-
-    // FIX: Leaflet needs a resize trigger when initialized in hidden or flex containers
     setTimeout(() => { dashboardMap.invalidateSize(); }, 500);
-
     let mapMarkers = [];
 
     const renderMarkers = (markers) => {
@@ -176,18 +285,16 @@
         markers.forEach(m => {
             if (m.lat && m.lon) {
                 const mk = L.marker([m.lat, m.lon])
-                    .bindPopup(`<b>${m.name}</b><br><span class="text-xs">${m.dept}</span><br>Time: ${m.in || '-'}`)
+                    .bindPopup(`<b>${m.name}</b><br>${m.dept}<br>In: ${m.in || '-'}`)
                     .addTo(dashboardMap);
                 mapMarkers.push(mk);
             }
         });
     };
 
-    // 2. Charting Logic
     const renderHeatmap = (labels, present, total) => {
         const ratios = present.map((p, i) => total[i] ? Math.round(p * 100 / total[i]) : 0);
         const colors = ratios.map(palette);
-        
         const ctx = document.getElementById('heatmapChart').getContext('2d');
         if (heatmapChart) {
             heatmapChart.data.labels = labels;
@@ -197,49 +304,50 @@
         } else {
             heatmapChart = new Chart(ctx, {
                 type: 'bar',
-                data: { 
-                    labels, 
-                    datasets: [{ 
-                        label: 'Presence %', 
-                        data: ratios, 
-                        backgroundColor: colors, 
-                        borderRadius: 6 
-                    }] 
-                },
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false,
-                    scales: { 
-                        y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } 
-                    }, 
-                    plugins: { legend: { display: false } } 
+                data: { labels, datasets: [{ label: 'Presence %', data: ratios, backgroundColor: colors, borderRadius: 6 }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } },
+                    plugins: { legend: { display: false } }
                 }
             });
         }
     };
 
-    // 3. Live Polling Function
     const refresh = async () => {
         try {
-            const res = await fetch("{% url 'attendance:live' %}", { 
-                headers: { 'X-Requested-With': 'XMLHttpRequest' } 
-            });
+            const res = await fetch("{% url 'attendance:live' %}", { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
             if (!res.ok) return;
             const data = await res.json();
-            
             renderHeatmap(data.labels, data.present, data.total);
             renderMarkers(data.markers);
-            
             const stamp = document.getElementById('live-stamp');
             if (stamp) stamp.textContent = new Date().toLocaleTimeString();
-        } catch (e) { 
-            console.error('Attendance live poll failed:', e); 
-        }
+        } catch (e) { console.error('Live poll failed:', e); }
     };
-
-    // Start polling every 30 seconds
     refresh();
     setInterval(refresh, 30000);
+
+    // Dept tab switching
+    window.showDept = function(target) {
+        document.querySelectorAll('.dept-section').forEach(s => {
+            s.style.display = (target === 'all' || s.id === target) ? '' : 'none';
+        });
+        document.querySelectorAll('.dept-tab').forEach(btn => {
+            const active = btn.dataset.dept === target;
+            btn.className = 'dept-tab px-4 py-1.5 rounded-full text-sm font-medium transition-colors ' +
+                (active ? 'bg-slate-800 text-white' : 'bg-white border border-slate-200 text-slate-700 hover:border-blue-400 hover:text-blue-700');
+        });
+    };
+
+    // Collapsible
+    window.toggleSection = function(bodyId, header) {
+        const body = document.getElementById(bodyId);
+        const arrow = header.querySelector('.toggle-arrow');
+        const hidden = body.style.display === 'none';
+        body.style.display = hidden ? '' : 'none';
+        if (arrow) arrow.style.transform = hidden ? '' : 'rotate(-90deg)';
+    };
 })();
 </script>
 {% endif %}

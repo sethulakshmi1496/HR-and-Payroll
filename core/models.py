@@ -20,6 +20,7 @@ class User(AbstractUser):
 
     class Role(models.TextChoices):
         MD = 'MD', 'Managing Director'
+        GM = 'GM', 'General Manager'
         HR = 'HR', 'Human Resources'
         DEPT_HEAD = 'DEPT_HEAD', 'Department Head'
         STAFF = 'STAFF', 'Staff'
@@ -45,6 +46,10 @@ class User(AbstractUser):
     @property
     def is_md(self):
         return self.role == self.Role.MD
+
+    @property
+    def is_gm(self):
+        return self.role == self.Role.GM
 
     @property
     def is_hr(self):
@@ -103,7 +108,7 @@ class Department(models.Model):
         on_delete=models.SET_NULL,
         null=True, blank=True,
         related_name='headed_departments',
-        limit_choices_to={'role__in': ['MD', 'DEPT_HEAD']},
+        limit_choices_to={'role__in': ['MD', 'GM', 'DEPT_HEAD']},
     )
 
     is_active = models.BooleanField(default=True)
@@ -215,6 +220,12 @@ class EmployeeProfile(models.Model):
 
     emergency_contact = models.CharField(max_length=15, blank=True)
     address = models.TextField(blank=True)
+
+    # Personal Details
+    wedding_anniversary = models.DateField(null=True, blank=True, help_text='Wedding anniversary date')
+    spouse_name = models.CharField(max_length=100, blank=True)
+    blood_group = models.CharField(max_length=20, blank=True)
+    hobbies = models.TextField(blank=True)
 
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -628,3 +639,142 @@ class Holiday(models.Model):
     def __str__(self):
         status = '✓' if self.is_active else '✗'
         return f"{status} {self.name} — {self.date}"
+
+
+# ──────────────────────────────────────────────────────────────
+# 10. Daily Work Log (Log Book)
+# ──────────────────────────────────────────────────────────────
+class DailyWorkLog(models.Model):
+    """
+    Daily work status log entered by staff members.
+    Aggregated for department-wise reports in MD, HR, and Dept Head views.
+    """
+    profile = models.ForeignKey(
+        EmployeeProfile,
+        on_delete=models.PROTECT,
+        related_name='work_logs',
+    )
+    date = models.DateField(default=timezone.now)
+    status_text = models.TextField(help_text="Detailed status of daily tasks and accomplishments.")
+    hours_logged = models.DecimalField(max_digits=4, decimal_places=1, default=Decimal('8.0'))
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'core_daily_work_log'
+        ordering = ['-date', '-created_at']
+        unique_together = ['profile', 'date']
+        indexes = [
+            models.Index(fields=['date', 'profile']),
+        ]
+
+    def __str__(self):
+        return f"{self.profile.employee_id} | {self.date} | Log"
+
+
+# ──────────────────────────────────────────────────────────────
+# 11. Reimbursement Request
+# ──────────────────────────────────────────────────────────────
+class ReimbursementRequest(models.Model):
+    """
+    Staff reimbursement tracking. Includes bill upload.
+    Workflow: Staff submits (PENDING) -> HR verifies (HR_VERIFIED) -> MD approves (APPROVED) or REJECTED.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', 'Pending HR Verification'
+        HR_VERIFIED = 'HR_VERIFIED', 'HR Verified'
+        APPROVED = 'APPROVED', 'Approved'
+        REJECTED = 'REJECTED', 'Rejected'
+
+    profile = models.ForeignKey(
+        EmployeeProfile,
+        on_delete=models.PROTECT,
+        related_name='reimbursement_requests',
+    )
+    title = models.CharField(max_length=200, help_text='Expense title / description')
+    description = models.TextField(blank=True)
+    amount = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+    )
+    bill_file = models.FileField(upload_to='reimbursements/%Y/%m/', blank=True, null=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    rejection_reason = models.TextField(blank=True)
+    
+    hr_verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='verified_reimbursements',
+    )
+    hr_verified_at = models.DateTimeField(null=True, blank=True)
+
+    md_approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='approved_reimbursements',
+    )
+    md_approved_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'core_reimbursement_request'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=['profile', 'status']),
+        ]
+
+    def __str__(self):
+        return f"{self.profile.employee_id} | ₹{self.amount} | {self.status}"
+
+
+# ──────────────────────────────────────────────────────────────
+# 12. Staff Task Assignment
+# ──────────────────────────────────────────────────────────────
+class StaffTask(models.Model):
+    """
+    Task assigned by MD, GM, HR, or Department Head to staff.
+    Staff can update status (PENDING, IN_PROGRESS, COMPLETED).
+    """
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', 'Pending'
+        IN_PROGRESS = 'IN_PROGRESS', 'In Progress'
+        COMPLETED = 'COMPLETED', 'Completed'
+
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='assigned_tasks',
+    )
+    assigned_to = models.ForeignKey(
+        EmployeeProfile,
+        on_delete=models.CASCADE,
+        related_name='tasks',
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    due_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'core_staff_task'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} - {self.assigned_to.user.get_full_name()}"
+

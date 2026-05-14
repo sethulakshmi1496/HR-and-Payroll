@@ -1,0 +1,414 @@
+{% extends 'onboarding/base.html' %}
+{% block title %}Reimbursements - AEC HR SuperApp{% endblock %}
+{% block page_title %}Reimbursements{% endblock %}
+
+{% block content %}
+{% if request.user.role != 'MD' %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-slate-900">Reimbursement Center</h1>
+    <p class="text-slate-500 mt-1">Submit, verify, and approve staff expense claims and bill uploads.</p>
+</div>
+{% endif %}
+
+{% if request.user.role == 'MD' %}
+<div class="mb-10 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-500/20 via-transparent to-transparent"></div>
+    <div class="relative z-10">
+        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-6 mb-6">
+            <div>
+                <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/20 text-blue-200">Executive Report</span>
+                <h2 class="text-2xl font-extrabold mt-2">Department-Wise Monthly Reimbursement Summary</h2>
+                <p class="text-slate-300 text-xs mt-1">Total approved reimbursement expenditure across all business units for {{ report_month_name }}.</p>
+            </div>
+            <div class="bg-white/10 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/10 text-right">
+                <div class="text-[10px] font-bold text-blue-200 uppercase tracking-widest">Total Monthly Spent</div>
+                <div class="text-3xl font-extrabold text-emerald-400 mt-0.5">₹{{ total_monthly_spent }}</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for item in monthly_report %}
+            <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-5 flex items-center justify-between hover:bg-white/10 transition">
+                <div>
+                    <h3 class="font-bold text-sm text-slate-100">{{ item.department.name }}</h3>
+                    <p class="text-[11px] text-slate-400">Code: {{ item.department.code }}</p>
+                </div>
+                <div class="text-right font-extrabold text-base text-emerald-300">
+                    ₹{{ item.spent }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# 1. HR and MD View: Department-wise Requests (Placed at top of page) #}
+{% if request.user.role == 'HR' or request.user.role == 'MD' %}
+<div class="mb-14">
+    <div class="mb-6">
+        <h2 class="text-2xl font-bold text-slate-900">Department-Wise Verification & Approval</h2>
+        <p class="text-slate-500 text-sm mt-1">Review, verify, and approve reimbursement claims across all company departments.</p>
+    </div>
+
+    <div class="space-y-10">
+        {% for dept_data in dept_reimbursements %}
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <!-- Department Header -->
+            <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                    <h3 class="font-bold text-slate-900 text-base">{{ dept_data.department.name }}</h3>
+                    <p class="text-xs text-slate-500">Code: {{ dept_data.department.code }}</p>
+                </div>
+            </div>
+
+            {% if dept_data.has_items %}
+            <div class="p-6 space-y-8">
+                
+                {# PENDING REQUESTS (For HR Verification) #}
+                {% if request.user.role == 'HR' and dept_data.pending %}
+                <div>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-amber-600 mb-3 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                        Pending HR Verification ({{ dept_data.pending.count }})
+                    </h4>
+                    <div class="overflow-x-auto border border-slate-100 rounded-xl">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50/50 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                                    <th class="py-3 px-4">Employee</th>
+                                    <th class="py-3 px-4">Expense Title</th>
+                                    <th class="py-3 px-4">Amount</th>
+                                    <th class="py-3 px-4">Bill</th>
+                                    <th class="py-3 px-4 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-sm">
+                                {% for req in dept_data.pending %}
+                                <tr class="hover:bg-slate-50/50">
+                                    <td class="py-3 px-4">
+                                        <div class="font-bold text-slate-900">{{ req.profile.user.get_full_name }}</div>
+                                        <div class="text-[11px] text-slate-400">{{ req.profile.employee_id }}</div>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <div class="font-medium text-slate-900">{{ req.title }}</div>
+                                        {% if req.description %}
+                                        <div class="text-xs text-slate-400">{{ req.description }}</div>
+                                        {% endif %}
+                                        <div class="text-[11px] text-slate-400 mt-0.5">{{ req.created_at|date:"M d, Y" }}</div>
+                                    </td>
+                                    <td class="py-3 px-4 font-bold text-slate-900">₹{{ req.amount }}</td>
+                                    <td class="py-3 px-4">
+                                        {% if req.bill_file %}
+                                        <a href="{{ req.bill_file.url }}" target="_blank" class="text-blue-600 hover:text-blue-800 text-xs font-semibold inline-flex items-center gap-1">
+                                            View Bill
+                                        </a>
+                                        {% else %}
+                                        <span class="text-slate-400 text-xs">No Bill</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="py-3 px-4 text-right">
+                                        <div class="flex items-center justify-end gap-2">
+                                            <form method="post" action="{% url 'reimbursements' %}" class="inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="verify_reimbursement">
+                                                <input type="hidden" name="req_id" value="{{ req.id }}">
+                                                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition shadow-sm">Verify</button>
+                                            </form>
+
+                                            <form method="post" action="{% url 'reimbursements' %}" class="inline flex items-center gap-1" onsubmit="return confirm('Reject this request?');">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="reject_reimbursement">
+                                                <input type="hidden" name="req_id" value="{{ req.id }}">
+                                                <input type="text" name="rejection_reason" placeholder="Reason..." required class="border border-slate-200 rounded-lg px-2 py-1 text-xs w-28 bg-white outline-none">
+                                                <button type="submit" class="bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold px-3 py-1.5 rounded-lg text-xs transition">Reject</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+
+                {# HR VERIFIED REQUESTS (For MD Approval) #}
+                {% if request.user.role == 'MD' and dept_data.verified %}
+                <div>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-blue-600 mb-3 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                        HR Verified — Pending MD Approval ({{ dept_data.verified.count }})
+                    </h4>
+                    <div class="overflow-x-auto border border-slate-100 rounded-xl">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50/50 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                                    <th class="py-3 px-4">Employee</th>
+                                    <th class="py-3 px-4">Expense Title</th>
+                                    <th class="py-3 px-4">Amount</th>
+                                    <th class="py-3 px-4">Bill</th>
+                                    <th class="py-3 px-4">Status Tag</th>
+                                    <th class="py-3 px-4 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-sm">
+                                {% for req in dept_data.verified %}
+                                <tr class="hover:bg-slate-50/50">
+                                    <td class="py-3 px-4">
+                                        <div class="font-bold text-slate-900">{{ req.profile.user.get_full_name }}</div>
+                                        <div class="text-[11px] text-slate-400">{{ req.profile.employee_id }}</div>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <div class="font-medium text-slate-900">{{ req.title }}</div>
+                                        {% if req.description %}
+                                        <div class="text-xs text-slate-400">{{ req.description }}</div>
+                                        {% endif %}
+                                        <div class="text-[11px] text-slate-400 mt-0.5">Submitted: {{ req.created_at|date:"M d, Y" }}</div>
+                                    </td>
+                                    <td class="py-3 px-4 font-bold text-slate-900">₹{{ req.amount }}</td>
+                                    <td class="py-3 px-4">
+                                        {% if req.bill_file %}
+                                        <a href="{{ req.bill_file.url }}" target="_blank" class="text-blue-600 hover:text-blue-800 text-xs font-semibold inline-flex items-center gap-1">
+                                            View Bill
+                                        </a>
+                                        {% else %}
+                                        <span class="text-slate-400 text-xs">No Bill</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-600 border border-blue-200 inline-block">
+                                            ✓ HR Verified
+                                        </span>
+                                        <div class="text-[10px] text-slate-400 mt-1">by {{ req.hr_verified_by.get_full_name }}</div>
+                                    </td>
+                                    <td class="py-3 px-4 text-right">
+                                        <div class="flex items-center justify-end gap-2">
+                                            <form method="post" action="{% url 'reimbursements' %}" class="inline" data-allow-md>
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="approve_reimbursement">
+                                                <input type="hidden" name="req_id" value="{{ req.id }}">
+                                                <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-1.5 rounded-lg text-xs transition shadow-sm" data-allow-md>Approve</button>
+                                            </form>
+
+                                            <form method="post" action="{% url 'reimbursements' %}" class="inline flex items-center gap-1" onsubmit="return confirm('Reject this request?');" data-allow-md>
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="reject_reimbursement">
+                                                <input type="hidden" name="req_id" value="{{ req.id }}">
+                                                <input type="text" name="rejection_reason" placeholder="Reason..." required class="border border-slate-200 rounded-lg px-2 py-1 text-xs w-28 bg-white outline-none">
+                                                <button type="submit" class="bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold px-3 py-1.5 rounded-lg text-xs transition" data-allow-md>Reject</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+
+                {# HISTORY SECTION #}
+                {% if dept_data.history %}
+                <div>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Processed History</h4>
+                    <div class="overflow-x-auto border border-slate-100 rounded-xl">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50/50 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                                    <th class="py-3 px-4">Employee</th>
+                                    <th class="py-3 px-4">Expense Title</th>
+                                    <th class="py-3 px-4">Amount</th>
+                                    <th class="py-3 px-4">Bill</th>
+                                    <th class="py-3 px-4">Status</th>
+                                    <th class="py-3 px-4">Processed By / Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-sm">
+                                {% for req in dept_data.history %}
+                                <tr class="hover:bg-slate-50/50">
+                                    <td class="py-3 px-4">
+                                        <div class="font-bold text-slate-900">{{ req.profile.user.get_full_name }}</div>
+                                        <div class="text-[11px] text-slate-400">{{ req.profile.employee_id }}</div>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <div class="font-medium text-slate-900">{{ req.title }}</div>
+                                        <div class="text-[11px] text-slate-400 mt-0.5">{{ req.created_at|date:"M d, Y" }}</div>
+                                    </td>
+                                    <td class="py-3 px-4 font-bold text-slate-900">₹{{ req.amount }}</td>
+                                    <td class="py-3 px-4">
+                                        {% if req.bill_file %}
+                                        <a href="{{ req.bill_file.url }}" target="_blank" class="text-blue-600 hover:text-blue-800 text-xs font-semibold inline-flex items-center gap-1">
+                                            View Bill
+                                        </a>
+                                        {% else %}
+                                        <span class="text-slate-400 text-xs">No Bill</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        {% if req.status == 'HR_VERIFIED' %}
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-600 border border-blue-200">HR Verified</span>
+                                        {% elif req.status == 'APPROVED' %}
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">Approved</span>
+                                        {% elif req.status == 'REJECTED' %}
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-600 border border-rose-200">Rejected</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="py-3 px-4 text-xs text-slate-500">
+                                        {% if req.rejection_reason %}
+                                        <span class="text-rose-600 font-medium">{{ req.rejection_reason }}</span>
+                                        {% elif req.status == 'HR_VERIFIED' %}
+                                        Verified by {{ req.hr_verified_by.get_full_name|default:"HR" }}
+                                        {% elif req.status == 'APPROVED' %}
+                                        Approved by {{ req.md_approved_by.get_full_name|default:"MD" }}
+                                        {% else %}
+                                        —
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+
+            </div>
+            {% else %}
+            <div class="p-6 text-center text-slate-400 text-sm">
+                No active reimbursement requests for this department.
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{# 2. Staff Section: Submit Request Form & My Requests (Hidden for MD) #}
+{% if my_profile and request.user.role != 'MD' %}
+<div class="{% if request.user.role == 'HR' %}border-t border-slate-200 pt-10{% endif %}">
+    <div class="mb-6">
+        <h2 class="text-2xl font-bold text-slate-900">My Personal Reimbursement Claims</h2>
+        <p class="text-slate-500 text-sm mt-1">Submit and track your own expense claims and uploaded bills.</p>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm mb-10 max-w-3xl">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+            </div>
+            <div>
+                <h3 class="text-lg font-bold text-slate-900">Add New Reimbursement Request</h3>
+                <p class="text-xs text-slate-500">Upload your bills and provide expense details for verification.</p>
+            </div>
+        </div>
+
+        <form method="post" action="{% url 'reimbursements' %}" enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_reimbursement">
+            
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Expense Title <span class="text-rose-500">*</span></label>
+                <input type="text" name="title" required placeholder="e.g., Client Dinner, Office Supplies" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Amount (₹) <span class="text-rose-500">*</span></label>
+                    <input type="number" step="0.01" min="0.01" name="amount" required placeholder="0.00" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Upload Bill / Receipt <span class="text-rose-500">*</span></label>
+                    <input type="file" name="bill_file" required class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-slate-200 rounded-xl bg-slate-50 transition cursor-pointer">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Description (Optional)</label>
+                <textarea name="description" rows="2" placeholder="Any additional context about this expense..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"></textarea>
+            </div>
+
+            <div class="flex justify-end pt-2">
+                <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow-sm transition">Submit Request</button>
+            </div>
+        </form>
+    </div>
+
+    {# Staff History / My Requests #}
+    <div class="mb-12">
+        <h3 class="text-sm font-bold text-slate-900 uppercase tracking-widest mb-4">My Reimbursement History</h3>
+        <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+            {% if my_requests %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50/75 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            <th class="py-3.5 px-6">Date</th>
+                            <th class="py-3.5 px-6">Title</th>
+                            <th class="py-3.5 px-6">Amount</th>
+                            <th class="py-3.5 px-6">Bill</th>
+                            <th class="py-3.5 px-6">Status</th>
+                            <th class="py-3.5 px-6">Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-sm">
+                        {% for req in my_requests %}
+                        <tr class="hover:bg-slate-50/50">
+                            <td class="py-4 px-6 text-slate-500">{{ req.created_at|date:"M d, Y" }}</td>
+                            <td class="py-4 px-6 font-medium text-slate-900">
+                                {{ req.title }}
+                                {% if req.description %}
+                                <p class="text-xs text-slate-400 mt-0.5">{{ req.description }}</p>
+                                {% endif %}
+                            </td>
+                            <td class="py-4 px-6 font-bold text-slate-900">₹{{ req.amount }}</td>
+                            <td class="py-4 px-6">
+                                {% if req.bill_file %}
+                                <a href="{{ req.bill_file.url }}" target="_blank" class="text-blue-600 hover:text-blue-800 text-xs font-semibold flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                    View Bill
+                                </a>
+                                {% else %}
+                                <span class="text-slate-400 text-xs">No Bill</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-4 px-6">
+                                {% if req.status == 'PENDING' %}
+                                <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-600 border border-amber-200">Pending HR Verification</span>
+                                {% elif req.status == 'HR_VERIFIED' %}
+                                <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-600 border border-blue-200">HR Verified (Pending MD)</span>
+                                {% elif req.status == 'APPROVED' %}
+                                <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">Approved</span>
+                                {% elif req.status == 'REJECTED' %}
+                                <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-600 border border-rose-200">Rejected</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-4 px-6 text-xs text-slate-500">
+                                {% if req.rejection_reason %}
+                                <span class="text-rose-600">{{ req.rejection_reason }}</span>
+                                {% elif req.status == 'HR_VERIFIED' %}
+                                Verified by {{ req.hr_verified_by.get_full_name|default:"HR" }}
+                                {% elif req.status == 'APPROVED' %}
+                                Approved by {{ req.md_approved_by.get_full_name|default:"MD" }}
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="p-8 text-center text-slate-400 text-sm">
+                You haven't submitted any reimbursement requests yet.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

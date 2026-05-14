@@ -1,0 +1,286 @@
+{% extends 'onboarding/base.html' %}
+{% load static %}
+{% block title %}Notifications - AEC HR SuperApp{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Header Card -->
+    <div class="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-2xl p-6 md:p-8 text-white shadow-lg relative overflow-hidden">
+        <div class="absolute inset-0 bg-black/10"></div>
+        <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-white/20 uppercase tracking-wider">Announcement Center</span>
+                <h1 class="text-3xl font-extrabold mt-2 tracking-tight">Organization Board</h1>
+                <p class="text-indigo-100 text-sm mt-1">Stay updated with official updates, policies, and company-wide news.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <form action="{% url 'notifications:mark_all_read' %}" method="post" class="inline">
+                    {% csrf_token %}
+                    <button type="submit" class="px-4 py-2 bg-white/15 hover:bg-white/25 active:bg-white/35 text-white text-sm font-semibold rounded-xl border border-white/20 transition backdrop-blur-md flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Mark All as Read
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {% if can_post %}
+    <!-- Post Notification Card (HR / MD Only) -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" x-data="{ open: false }">
+        <div @click="open = !open" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                    <svg class="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-950">Publish a New Announcement</h3>
+                    <p class="text-xs text-slate-500">Create an official company-wide announcement instantly visible to all staff.</p>
+                </div>
+            </div>
+            <span class="text-slate-400 font-bold transition-transform duration-200" :class="open ? 'rotate-180' : ''">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </span>
+        </div>
+
+        <div x-show="open" x-collapse x-cloak class="border-t border-slate-100 p-6 bg-slate-50/50">
+            <form action="{% url 'notifications:post' %}" method="post" class="space-y-4">
+                {% csrf_token %}
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Announcement Title</label>
+                    <input type="text" name="title" placeholder="e.g. Town Hall Meeting, Policy Update..." required
+                        class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition shadow-sm">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Message Details</label>
+                    <textarea name="message" rows="4" placeholder="Write full details about this update..." required
+                        class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition shadow-sm"></textarea>
+                </div>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" @click="open = false" class="px-4 py-2 text-sm text-slate-600 font-medium hover:bg-slate-100 rounded-xl transition">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-semibold rounded-xl transition shadow-md shadow-indigo-100">
+                        Post Announcement
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Action Alerts for HR / MD -->
+    {% if pending_leaves or pending_reimbursements %}
+    <div class="space-y-4 mb-8">
+        {% for leave in pending_leaves %}
+        <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-5 shadow-sm flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold rounded uppercase tracking-wider">Leave Request</span>
+                        <span class="text-xs text-slate-500">{{ leave.created_at|date:"M d, Y" }}</span>
+                    </div>
+                    <h3 class="font-bold text-slate-900 text-sm mt-0.5">{{ leave.profile.user.get_full_name }} applied for {{ leave.get_leave_type_display }} ({{ leave.start_date|date:"M d" }} to {{ leave.end_date|date:"M d" }})</h3>
+                </div>
+            </div>
+            <a href="{% url 'leave:list' %}" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition shadow-sm whitespace-nowrap">Review Leave</a>
+        </div>
+        {% endfor %}
+
+        {% for req in pending_reimbursements %}
+        <div class="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-5 shadow-sm flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded uppercase tracking-wider">Reimbursement</span>
+                        <span class="text-xs text-slate-500">{{ req.created_at|date:"M d, Y" }}</span>
+                    </div>
+                    <h3 class="font-bold text-slate-900 text-sm mt-0.5">{{ req.profile.user.get_full_name }} claimed ₹{{ req.amount }} for "{{ req.title }}"</h3>
+                </div>
+            </div>
+            <a href="{% url 'reimbursements' %}" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-sm whitespace-nowrap">Review Claim</a>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Notifications Board -->
+    <div class="space-y-4">
+        {% for item in notif_data %}
+        <div class="relative bg-white border rounded-2xl shadow-sm transition overflow-hidden group hover:border-indigo-200 hover:shadow-md {% if not item.is_read %}border-indigo-100 bg-gradient-to-r from-indigo-50/30 to-white{% else %}border-slate-200{% endif %}"
+             id="notification-card-{{ item.obj.id }}">
+            
+            {% if not item.is_read %}
+            <!-- Unread Highlight Bar -->
+            <div class="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500"></div>
+            {% endif %}
+
+            <div class="p-6 flex items-start gap-4">
+                <!-- Status Badge Icon -->
+                <div class="flex-shrink-0 mt-1">
+                    {% if not item.is_read %}
+                    <span class="relative flex h-3 w-3">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+                    </span>
+                    {% else %}
+                    <div class="text-slate-300">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="flex-1 min-w-0 space-y-2">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition truncate">{{ item.obj.title }}</h2>
+                            <p class="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                <span class="font-medium text-slate-600">Posted by: {{ item.obj.created_by.get_full_name|default:"HR Administrator" }}</span>
+                                <span>•</span>
+                                <span>{{ item.obj.created_at|date:"d M Y, h:i A" }}</span>
+                            </p>
+                        </div>
+                        
+                        <div class="flex items-center gap-2">
+                            {% if not item.is_read %}
+                            <button onclick="markAsRead({{ item.obj.id }})" class="text-xs text-indigo-600 font-semibold hover:text-indigo-800 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg hover:bg-indigo-100 transition">
+                                Mark Read
+                            </button>
+                            {% endif %}
+
+                            {% if can_post %}
+                            <form action="{% url 'notifications:delete' item.obj.id %}" method="post" class="inline" onsubmit="return confirm('Delete this announcement?')">
+                                {% csrf_token %}
+                                <button type="submit" class="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Delete Announcement">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                    </svg>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Message text with formatting pre-wrap -->
+                    <p class="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">{{ item.obj.message }}</p>
+
+                    {% if item.obj.notification_type != 'GENERAL' and item.obj.target_profile %}
+                    <div class="mt-4 pt-4 border-t border-slate-100 bg-slate-50/50 p-4 rounded-xl">
+                        <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                            <span>💌</span> Send Your Wishes to {{ item.obj.target_profile.user.first_name }}
+                        </h4>
+                        <form action="{% url 'notifications:send_wish' item.obj.id %}" method="post" class="space-y-3">
+                            {% csrf_token %}
+                            <div class="flex flex-wrap gap-1.5 mb-2">
+                                <button type="button" onclick="addEmoji(this, 'wish-input-{{ item.obj.id }}')" class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium shadow-sm transition">🎂 Happy Birthday!</button>
+                                <button type="button" onclick="addEmoji(this, 'wish-input-{{ item.obj.id }}')" class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium shadow-sm transition">🎉 Congratulations!</button>
+                                <button type="button" onclick="addEmoji(this, 'wish-input-{{ item.obj.id }}')" class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium shadow-sm transition">🥳 Best Wishes!</button>
+                                <button type="button" onclick="addEmoji(this, 'wish-input-{{ item.obj.id }}')" class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium shadow-sm transition">💐 Wishing you lots of joy!</button>
+                                <button type="button" onclick="addEmoji(this, 'wish-input-{{ item.obj.id }}')" class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium shadow-sm transition">🙌 Welcome aboard!</button>
+                                <button type="button" onclick="addEmoji(this, 'wish-input-{{ item.obj.id }}')" class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium shadow-sm transition">❤️</button>
+                            </div>
+                            <div class="flex gap-2">
+                                <input type="text" id="wish-input-{{ item.obj.id }}" name="wish_text" placeholder="Type your personal wish or add emojis..." required
+                                    class="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition shadow-sm">
+                                <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl transition shadow-md shadow-indigo-100 flex items-center gap-1.5">
+                                    <span>Send Wish</span>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
+            <div class="w-16 h-16 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                </svg>
+            </div>
+            <h3 class="font-bold text-slate-900 text-base">No announcements found</h3>
+            <p class="text-slate-500 text-sm mt-1 max-w-sm mx-auto">There are no active company announcements at the moment. You're completely up to date!</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+    async function markAsRead(id) {
+        const url = `/notifications/mark-read/${id}/`;
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            if (response.ok) {
+                // Instantly remove badge highlight and trigger UI animation
+                const card = document.getElementById(`notification-card-${id}`);
+                if (card) {
+                    card.classList.remove('border-indigo-100', 'bg-gradient-to-r', 'from-indigo-50/30', 'to-white');
+                    card.classList.add('border-slate-200');
+                    const leftBar = card.querySelector('.absolute.left-0');
+                    if (leftBar) leftBar.remove();
+                    
+                    // Replace status indicator to checked circle
+                    const iconContainer = card.querySelector('.flex-shrink-0');
+                    if (iconContainer) {
+                        iconContainer.innerHTML = `
+                            <div class="text-slate-300">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                        `;
+                    }
+                    
+                    // Remove "Mark Read" button
+                    const btn = card.querySelector('button[onclick]');
+                    if (btn) btn.remove();
+                    
+                    // Dynamically decrease navbar badge count
+                    const badge = document.getElementById('navbar-notif-badge');
+                    if (badge) {
+                        let count = parseInt(badge.textContent.trim()) || 0;
+                        count = Math.max(0, count - 1);
+                        if (count > 0) {
+                            badge.textContent = count;
+                        } else {
+                            badge.remove();
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Failed to mark read:', e);
+        }
+    }
+
+    function addEmoji(btn, inputId) {
+        const input = document.getElementById(inputId);
+        if (input) {
+            input.value = input.value ? input.value + ' ' + btn.innerText : btn.innerText;
+            input.focus();
+        }
+    }
+</script>
+{% endblock %}

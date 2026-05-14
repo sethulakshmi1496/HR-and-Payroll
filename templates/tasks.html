@@ -1,0 +1,291 @@
+{% extends 'onboarding/base.html' %}
+{% block title %}Task Management - AEC HR SuperApp{% endblock %}
+{% block page_title %}Task Management{% endblock %}
+
+{% block content %}
+<div class="space-y-10 max-w-7xl mx-auto pb-16">
+    <!-- Header Card -->
+    <div class="bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-700 rounded-3xl p-8 md:p-10 text-white shadow-xl relative overflow-hidden">
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent"></div>
+        <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div>
+                <span class="px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-widest bg-white/20 text-white">Productivity Center</span>
+                <h1 class="text-3xl md:text-4xl font-black mt-2 tracking-tight">Staff Task Assignment</h1>
+                <p class="text-indigo-100 text-sm mt-1 max-w-xl">Assign, monitor, and update daily and project-based assignments across all AEC Group business units.</p>
+            </div>
+            {% if is_manager %}
+            <button onclick="document.getElementById('assign-task-form-card').scrollIntoView({behavior: 'smooth'})" class="px-6 py-3 bg-white text-indigo-700 hover:bg-indigo-50 font-bold text-sm rounded-2xl shadow-lg transition flex items-center gap-2 flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                Assign New Task
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if messages %}
+    <div class="space-y-2">
+        {% for m in messages %}
+        <div class="p-4 rounded-2xl font-medium text-sm {% if m.tags == 'error' %}bg-rose-50 text-rose-800 border border-rose-200{% else %}bg-emerald-50 text-emerald-800 border border-emerald-200{% endif %} flex items-center gap-3 shadow-sm">
+            <span>{% if m.tags == 'error' %}⚠️{% else %}✅{% endif %}</span>
+            <span>{{ m }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- 1. Staff Section: My Assigned Tasks -->
+    <div>
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">My Assigned Tasks</h2>
+                <p class="text-slate-500 text-xs mt-0.5">View tasks assigned to you and update your work progress.</p>
+            </div>
+            <span class="px-3 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-xs font-bold">{{ my_tasks|length }} Task{{ my_tasks|length|pluralize }}</span>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                    <tr>
+                        <th class="p-4 text-left">Task Details</th>
+                        <th class="p-4 text-left">Assigned By</th>
+                        <th class="p-4 text-left">Due Date</th>
+                        <th class="p-4 text-left">Current Status</th>
+                        <th class="p-4 text-right">Update Progress</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for t in my_tasks %}
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-4 max-w-xs">
+                            <div class="font-bold text-slate-900 text-base">{{ t.title }}</div>
+                            <div class="text-slate-500 text-xs mt-0.5">{{ t.description|default:"No additional description" }}</div>
+                        </td>
+                        <td class="p-4 whitespace-nowrap">
+                            <div class="font-semibold text-slate-800">{{ t.assigned_by.get_full_name }}</div>
+                            <div class="text-[11px] text-slate-400">{{ t.assigned_by.get_role_display }}</div>
+                        </td>
+                        <td class="p-4 whitespace-nowrap text-slate-600 font-medium">
+                            {{ t.due_date|date:"M d, Y"|default:"No due date" }}
+                        </td>
+                        <td class="p-4 whitespace-nowrap">
+                            <span class="px-3 py-1 rounded-full text-xs font-extrabold tracking-wide uppercase {% if t.status == 'COMPLETED' %}bg-emerald-100 text-emerald-800{% elif t.status == 'IN_PROGRESS' %}bg-amber-100 text-amber-800{% else %}bg-rose-100 text-rose-800{% endif %}">
+                                {{ t.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="p-4 text-right whitespace-nowrap">
+                            <form action="{% url 'tasks' %}" method="post" class="inline-flex items-center gap-2" data-allow-md>
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="update_status">
+                                <input type="hidden" name="task_id" value="{{ t.id }}">
+                                <select name="status" class="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option value="PENDING" {% if t.status == 'PENDING' %}selected{% endif %}>Pending</option>
+                                    <option value="IN_PROGRESS" {% if t.status == 'IN_PROGRESS' %}selected{% endif %}>In Progress</option>
+                                    <option value="COMPLETED" {% if t.status == 'COMPLETED' %}selected{% endif %}>Completed</option>
+                                </select>
+                                <button type="submit" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm transition" data-allow-md>
+                                    Update
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="p-8 text-center text-slate-400 font-medium">No tasks currently assigned to you. Great job!</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if is_manager %}
+    <!-- 2. Manager Section: Assign New Task Form -->
+    <div id="assign-task-form-card" class="bg-gradient-to-br from-white to-slate-50 rounded-3xl border border-slate-200 p-8 shadow-md">
+        <div class="mb-6">
+            <h2 class="text-2xl font-extrabold text-slate-950 tracking-tight">Assign Task to Staff</h2>
+            <p class="text-slate-500 text-xs mt-0.5">Select a staff member, provide specific instructions, and set a target completion date.</p>
+        </div>
+
+        <form action="{% url 'tasks' %}" method="post" class="space-y-6" data-allow-md>
+            {% csrf_token %}
+            <input type="hidden" name="action" value="assign_task">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Task Title / Headline</label>
+                    <input type="text" name="title" placeholder="e.g., Update Monthly Financial Logs, Audit Cinema Equipment..." required
+                        class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition shadow-sm">
+                </div>
+                <div x-data="{
+                    query: '',
+                    selectedId: '',
+                    open: false,
+                    staff: [
+                        {% for p in all_staff %}
+                        { id: '{{ p.id }}', name: '{{ p.user.get_full_name|escapejs }} ({{ p.department.name|escapejs }} - {{ p.designation|escapejs }})' },
+                        {% endfor %}
+                    ],
+                    get filteredStaff() {
+                        return this.staff.filter(i => i.name.toLowerCase().includes(this.query.toLowerCase()));
+                    },
+                    selectStaff(item) {
+                        this.selectedId = item.id;
+                        this.query = item.name;
+                        this.open = false;
+                    }
+                }" class="relative">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Assign To Employee</label>
+                    <input type="hidden" name="assigned_to" :value="selectedId">
+                    <input type="text" x-model="query" @focus="open = true" @click.away="open = false" placeholder="Type staff name to search & select..." required
+                        class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition shadow-sm font-medium text-slate-800">
+                    
+                    <div x-show="open && filteredStaff.length > 0" x-cloak
+                        class="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-slate-100">
+                        <template x-for="item in filteredStaff" :key="item.id">
+                            <div @click="selectStaff(item)" class="px-4 py-2.5 text-sm hover:bg-indigo-50 cursor-pointer font-medium text-slate-800 flex items-center justify-between">
+                                <span x-text="item.name"></span>
+                                <span class="text-xs text-indigo-600 font-bold" x-show="selectedId == item.id">✓</span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Task Description & Guidelines</label>
+                    <textarea name="description" rows="3" placeholder="Provide full details, requirements, and steps required to complete this assignment..."
+                        class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition shadow-sm"></textarea>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Target Due Date (Optional)</label>
+                    <input type="date" name="due_date"
+                        class="w-full md:w-1/2 px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition shadow-sm">
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-2">
+                <button type="submit" class="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-200 transition flex items-center gap-2" data-allow-md>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    Confirm & Assign Task
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 3. Manager Section: Department-Wise Staff Tasks Report -->
+    <div>
+        <div class="mb-6">
+            <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">Department-Wise Staff Tasks Report</h2>
+            <p class="text-slate-500 text-xs mt-0.5">Comprehensive real-time tracking of staff task status (Pending, In Progress, Completed) across departments.</p>
+        </div>
+
+        <div class="space-y-8">
+            {% for r in dept_reports %}
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-extrabold text-slate-900">{{ r.department.name }}</h3>
+                        <p class="text-xs text-slate-400">Code: {{ r.department.code }}</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-1 bg-rose-100 text-rose-800 font-bold text-xs rounded-lg">{{ r.pending|length }} Pending</span>
+                        <span class="px-2.5 py-1 bg-amber-100 text-amber-800 font-bold text-xs rounded-lg">{{ r.in_progress|length }} In Progress</span>
+                        <span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 font-bold text-xs rounded-lg">{{ r.completed|length }} Completed</span>
+                    </div>
+                </div>
+
+                <table class="w-full text-sm">
+                    <thead class="bg-white text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                        <tr>
+                            <th class="p-4 text-left">Staff Member</th>
+                            <th class="p-4 text-left">Task Description</th>
+                            <th class="p-4 text-left">Assigned By</th>
+                            <th class="p-4 text-left">Due Date</th>
+                            <th class="p-4 text-right">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for t in r.all_tasks %}
+                        <tr class="hover:bg-slate-50/70 transition">
+                            <td class="p-4 whitespace-nowrap">
+                                <div class="font-bold text-slate-900">{{ t.assigned_to.user.get_full_name }}</div>
+                                <div class="text-xs text-slate-400">{{ t.assigned_to.designation }}</div>
+                            </td>
+                            <td class="p-4 max-w-xs">
+                                <div class="font-bold text-slate-900 text-sm">{{ t.title }}</div>
+                                <div class="text-slate-500 text-xs mt-0.5">{{ t.description|default:"-" }}</div>
+                            </td>
+                            <td class="p-4 whitespace-nowrap text-slate-700 font-medium">
+                                {{ t.assigned_by.get_full_name }}
+                            </td>
+                            <td class="p-4 whitespace-nowrap text-slate-600 font-medium">
+                                {{ t.due_date|date:"M d, Y"|default:"-" }}
+                            </td>
+                            <td class="p-4 text-right whitespace-nowrap">
+                                <span class="px-3 py-1 rounded-full text-xs font-extrabold tracking-wide uppercase {% if t.status == 'COMPLETED' %}bg-emerald-100 text-emerald-800{% elif t.status == 'IN_PROGRESS' %}bg-amber-100 text-amber-800{% else %}bg-rose-100 text-rose-800{% endif %}">
+                                    {{ t.get_status_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="p-8 text-center text-slate-400 font-medium">No tasks assigned in this department.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 4. Tasks Assigned By Me -->
+    <div>
+        <div class="mb-4">
+            <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Tasks Assigned By Me</h2>
+            <p class="text-slate-500 text-xs mt-0.5">Assignments you have delegated to colleagues or team members.</p>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                    <tr>
+                        <th class="p-4 text-left">Task Details</th>
+                        <th class="p-4 text-left">Assigned To</th>
+                        <th class="p-4 text-left">Department</th>
+                        <th class="p-4 text-left">Due Date</th>
+                        <th class="p-4 text-right">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for t in assigned_by_me %}
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-4 max-w-xs">
+                            <div class="font-bold text-slate-900 text-base">{{ t.title }}</div>
+                            <div class="text-slate-500 text-xs mt-0.5">{{ t.description|default:"-" }}</div>
+                        </td>
+                        <td class="p-4 whitespace-nowrap font-bold text-slate-900">
+                            {{ t.assigned_to.user.get_full_name }}
+                        </td>
+                        <td class="p-4 whitespace-nowrap text-slate-600 font-medium">
+                            {{ t.assigned_to.department.name }}
+                        </td>
+                        <td class="p-4 whitespace-nowrap text-slate-600 font-medium">
+                            {{ t.due_date|date:"M d, Y"|default:"-" }}
+                        </td>
+                        <td class="p-4 text-right whitespace-nowrap">
+                            <span class="px-3 py-1 rounded-full text-xs font-extrabold tracking-wide uppercase {% if t.status == 'COMPLETED' %}bg-emerald-100 text-emerald-800{% elif t.status == 'IN_PROGRESS' %}bg-amber-100 text-amber-800{% else %}bg-rose-100 text-rose-800{% endif %}">
+                                {{ t.get_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="p-8 text-center text-slate-400 font-medium">You haven't assigned any tasks yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

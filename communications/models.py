@@ -36,6 +36,8 @@ class InternalMail(models.Model):
         ('APPOINTMENT',      'Appointment Letter'),
         ('PROMOTION',        'Promotion Letter'),
         ('OFFER_ACCEPTANCE', 'Offer Acceptance'),
+        ('WISH',             'Wish'),
+        ('LATE_WARNING',     'Late Warning'),
     )
     mail_type = models.CharField(max_length=20, choices=MAIL_TYPES, default='GENERAL')
 

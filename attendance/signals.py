@@ -117,6 +117,19 @@ def _escalate_discipline(att, late_min):
             to=recipients,
         )
 
+    # Also log as InternalMail so it appears in the app inbox
+    from communications.models import InternalMail
+    from core.models import User
+    hr_user = User.objects.filter(role='HR', is_active=True).first()
+    InternalMail.objects.create(
+        sender=hr_user,
+        recipient=profile.user,
+        recipient_email=profile.user.email,
+        subject=f"⚠️ Late Attendance Escalation #{n} this month",
+        body=f"Dear {profile.user.first_name},\n\nYou clocked in {late_min} minutes after your shift start on {att.date}.\nThis is late event #{n} this month. Severity: {rec.get_severity_display()}.\nSalary Deduction: {deduction} day(s).\n\nPlease correct attendance immediately.",
+        mail_type='LATE_WARNING',
+    )
+
 
 def _next_month(d):
     if d.month == 12:
