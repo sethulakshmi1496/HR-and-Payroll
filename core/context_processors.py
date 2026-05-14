@@ -81,13 +81,10 @@ def breadcrumbs(request):
 def active_user_profile(request):
     """
     Finds the active EmployeeProfile and corresponding profile picture URL
-    for the logged-in user by email address, resolving inconsistencies from
-    duplicate accounts.
+    for the logged-in user, prioritizing direct associations to avoid mismatches
+    when test/demo accounts share the same developer email address.
     """
     if getattr(request, 'user', None) and request.user.is_authenticated:
-        from core.models import EmployeeProfile, User
-        from django.db.models import F
-        
         # 1. First check if the logged in user has a profile picture directly
         if request.user.profile_picture:
             try:
@@ -95,34 +92,32 @@ def active_user_profile(request):
             except ValueError:
                 pass
             
-        # 2. Otherwise, resolve the active EmployeeProfile by email address
+        # 2. Check EmployeeProfile linked directly to request.user
         try:
-            profile = EmployeeProfile.objects.filter(
-                user__email=request.user.email
-            ).select_related('user').order_by(
-                F('date_of_joining').desc(nulls_last=True),
-                F('designation').desc(nulls_last=True),
-                '-id'
-            ).first()
-            
-            if profile and profile.user.profile_picture:
-                try:
-                    return {'resolved_profile_picture_url': profile.user.profile_picture.url}
-                except ValueError:
-                    pass
+            if hasattr(request.user, 'employeeprofile_set'):
+                profile = request.user.employeeprofile_set.first()
+                if profile and profile.user.profile_picture:
+                    try:
+                        return {'resolved_profile_picture_url': profile.user.profile_picture.url}
+                    except ValueError:
+                        pass
         except Exception:
             pass
             
-        # 3. If no image found in any related account, check if any user with this email has a picture
-        try:
-            u = User.objects.filter(email=request.user.email).exclude(profile_picture='').exclude(profile_picture=None).first()
-            if u and u.profile_picture:
-                try:
-                    return {'resolved_profile_picture_url': u.profile_picture.url}
-                except ValueError:
-                    pass
-        except Exception:
-            pass
+        # 3. Only if email is present and NOT a shared developer email, check fallback by email
+        if request.user.email and request.user.email not in ['sethulakshmi1496@gmail.com', 'sethulakshmi.pydev@gmail.com', 'admin@aec.com']:
+            try:
+                from core.models import EmployeeProfile, User
+                profile = EmployeeProfile.objects.filter(
+                    user__email=request.user.email
+                ).exclude(user__profile_picture='').first()
+                if profile and profile.user.profile_picture:
+                    try:
+                        return {'resolved_profile_picture_url': profile.user.profile_picture.url}
+                    except ValueError:
+                        pass
+            except Exception:
+                pass
             
     return {'resolved_profile_picture_url': None}
 
