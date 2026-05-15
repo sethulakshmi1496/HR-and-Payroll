@@ -81,6 +81,22 @@ def compose(request):
             body=body,
             mail_type='GENERAL',
         )
+        
+        # Send actual external email
+        try:
+            from django.core.mail import send_mail
+            from django.conf import settings
+            send_mail(
+                subject=subject,
+                message=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[recipient_email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            messages.warning(request, f"Internal mail saved, but external email failed: {e}")
+            return redirect('communications:sent_mails')
+
         messages.success(request, "Mail sent successfully.")
         return redirect('communications:sent_mails')
 
@@ -445,6 +461,19 @@ def generate_promotion_letter(request):
                 body=body,
                 mail_type='PROMOTION',
             )
+
+            try:
+                from django.core.mail import send_mail
+                from django.conf import settings
+                send_mail(
+                    subject=f"Promotion Letter – {new_designation}",
+                    message=body,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[employee.user.email],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                pass  # the internal one succeeded, we don't necessarily want to block the wish triggering or break the flow
 
             try:
                 from core.wishes_service import trigger_promotion_wish

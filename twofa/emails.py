@@ -12,12 +12,13 @@ def send_html_mail(subject, template_name, context, to, from_email=None, attachm
     context:       dict passed to the template
     to:            list of recipient emails
     """
-    from_email = from_email or 'AEC HR <no-reply@aecgroup.in>'
+    from django.conf import settings
+    from_email = from_email or f"AEC HR <{settings.DEFAULT_FROM_EMAIL}>"
     html_body = render_to_string(template_name, context)
     text_body = strip_tags(html_body)
     msg = EmailMultiAlternatives(str(subject), text_body, from_email, to)
     msg.attach_alternative(html_body, "text/html")
     for fname, content, mime in (attachments or []):
         msg.attach(fname, content, mime)
-    msg.send(fail_silently=True)
+    msg.send(fail_silently=False)
     return True
