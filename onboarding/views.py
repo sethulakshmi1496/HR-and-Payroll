@@ -19,11 +19,11 @@ def invite_candidate(request):
         form = HRInviteForm(request.POST)
         if form.is_valid():
             candidate = form.save()
-            success = send_onboarding_email(candidate, request)
+            success, err_msg = send_onboarding_email(candidate, request)
             if success:
                 messages.success(request, f"Invitation successfully sent to {candidate.email}")
             else:
-                messages.error(request, f"Failed to dispatch email. Please check SMTP configuration.")
+                messages.error(request, f"Failed to dispatch email: {err_msg}")
             return redirect('onboarding:hr_verify_list')
     else:
         form = HRInviteForm()

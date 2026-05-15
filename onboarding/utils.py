@@ -22,10 +22,10 @@ def send_onboarding_email(candidate, request=None):
             context={'candidate': candidate, 'link': link},
             to=[candidate.email]
         )
-        return True
+        return True, ""
     except Exception as e:
         print(f"Failed to send email: {e}")
-        return False
+        return False, str(e)
 def generate_official_joining_letter(profile):
     """
     Generates a PDF official joining letter for the employee.
