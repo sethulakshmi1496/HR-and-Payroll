@@ -6,6 +6,13 @@ import os
 from pathlib import Path
 from decouple import config, Csv
 
+# Force IPv4 for all socket connections to fix [Errno 101] Network is unreachable for SMTP
+import socket
+orig_getaddrinfo = socket.getaddrinfo
+def getaddrinfo_ipv4(host, port, family=0, type=0, proto=0, flags=0):
+    return orig_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+socket.getaddrinfo = getaddrinfo_ipv4
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-aec-hr-dev-key-change-in-production')
