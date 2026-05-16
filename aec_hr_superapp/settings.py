@@ -142,7 +142,8 @@ CSRF_TRUSTED_ORIGINS = config(
     cast=Csv(),
 )
 
-EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='core.email_backends.BrevoEmailBackend')
+BREVO_API_KEY = config('BREVO_API_KEY', default='')
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
