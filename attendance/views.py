@@ -201,13 +201,13 @@ class DashboardView(LoginRequiredMixin, View):
 
             qs = Attendance.objects.filter(
                 date__gte=date_from, date__lte=date_to
-            ).select_related('profile__user', 'profile__department')
+            ).exclude(profile__user__role=User.Role.MD).select_related('profile__user', 'profile__department')
 
             if user.role == User.Role.DEPT_HEAD:
-                depts = Department.objects.filter(is_active=True, head=user).order_by('name')
+                depts = Department.objects.filter(is_active=True, head=user).exclude(code='HQ').order_by('name')
                 qs = qs.filter(profile__department__in=depts)
             else:
-                depts = Department.objects.filter(is_active=True).order_by('name')
+                depts = Department.objects.filter(is_active=True).exclude(code='HQ').order_by('name')
 
             if dept_filter:
                 qs = qs.filter(profile__department_id=dept_filter)
@@ -223,11 +223,11 @@ class DashboardView(LoginRequiredMixin, View):
             # Departments for filter dropdown
             context['departments'] = depts
 
-            # Manageable employees for manual attendance entry
+            # Manageable employees for manual attendance entry (exclude MD)
             if user.role == User.Role.DEPT_HEAD:
-                context['manageable_employees'] = EmployeeProfile.objects.filter(is_active=True, department__in=depts).select_related('user').order_by('user__first_name')
+                context['manageable_employees'] = EmployeeProfile.objects.filter(is_active=True, department__in=depts).exclude(user__role=User.Role.MD).select_related('user').order_by('user__first_name')
             else:
-                context['manageable_employees'] = EmployeeProfile.objects.filter(is_active=True).select_related('user').order_by('user__first_name')
+                context['manageable_employees'] = EmployeeProfile.objects.filter(is_active=True).exclude(user__role=User.Role.MD).select_related('user').order_by('user__first_name')
 
             # Heatmap aggregation: per department -> present vs total active (always today)
             today_att = Attendance.objects.filter(date=today).select_related(
@@ -235,7 +235,7 @@ class DashboardView(LoginRequiredMixin, View):
             )
             labels, presents, totals = [], [], []
             for d in depts:
-                total_emp = d.employees.filter(is_active=True).count()
+                total_emp = d.employees.filter(is_active=True).exclude(user__role=User.Role.MD).count()
                 if total_emp == 0:
                     continue
                 present_emp = today_att.filter(
@@ -263,7 +263,7 @@ class DashboardView(LoginRequiredMixin, View):
                         total_work_days += 1
                     curr_date += datetime.timedelta(days=1)
 
-                dept_employees = dept.employees.filter(is_active=True).select_related('user')
+                dept_employees = dept.employees.filter(is_active=True).exclude(user__role=User.Role.MD).select_related('user')
                 dept_att = qs.filter(profile__department=dept)
 
                 emp_summaries = []
@@ -315,16 +315,18 @@ class LivePresenceView(LoginRequiredMixin, View):
             return JsonResponse({'error': 'forbidden'}, status=403)
 
         today = timezone.now().date()
-        todays = Attendance.objects.filter(date=today, in_time__isnull=False).select_related(
+        todays = Attendance.objects.filter(date=today, in_time__isnull=False).exclude(
+            profile__user__role=User.Role.MD
+        ).select_related(
             'profile__user', 'profile__department'
         )
         if request.user.role == User.Role.DEPT_HEAD:
             todays = todays.filter(profile__department__head=request.user)
 
-        depts = Department.objects.filter(is_active=True).order_by('name')
+        depts = Department.objects.filter(is_active=True).exclude(code='HQ').order_by('name')
         labels, presents, totals = [], [], []
         for d in depts:
-            total_emp = d.employees.filter(is_active=True).count()
+            total_emp = d.employees.filter(is_active=True).exclude(user__role=User.Role.MD).count()
             if total_emp == 0:
                 continue
             labels.append(d.code)
