@@ -408,40 +408,43 @@ def add_new_staff(request, profile_id):
 
 @login_required
 def staff_directory(request):
-    from core.models import Department, EmployeeProfile
-    departments = Department.objects.filter(is_active=True).order_by('name')
+    from core.models import Department, EmployeeProfile, User
+    # Exclude HQ department
+    departments = Department.objects.filter(is_active=True).exclude(code='HQ').order_by('name')
     staff_by_department = []
     total_permanent = 0
     total_probation = 0
     total_terminated = 0
 
     for dept in departments:
-        profiles = EmployeeProfile.objects.filter(department=dept).select_related('user')
+        # Exclude MD from staff list
+        profiles = EmployeeProfile.objects.filter(department=dept).exclude(user__role=User.Role.MD).select_related('user')
         probation   = list(profiles.filter(probation_status='PROBATION', is_active=True))
         permanent   = list(profiles.filter(probation_status='PERMANENT', is_active=True))
         terminated  = list(profiles.filter(probation_status='TERMINATED'))
         total = len(probation) + len(permanent) + len(terminated)
-        if total > 0:
-            staff_by_department.append({
-                'department':        dept,
-                'probation':         probation,
-                'permanent':         permanent,
-                'terminated':        terminated,
-                'total':             total,
-                'probation_count':   len(probation),
-                'permanent_count':   len(permanent),
-                'terminated_count':  len(terminated),
-            })
-            total_permanent  += len(permanent)
-            total_probation  += len(probation)
-            total_terminated += len(terminated)
+        
+        # Always append department even if total == 0 to show all departments
+        staff_by_department.append({
+            'department':        dept,
+            'probation':         probation,
+            'permanent':         permanent,
+            'terminated':        terminated,
+            'total':             total,
+            'probation_count':   len(probation),
+            'permanent_count':   len(permanent),
+            'terminated_count':  len(terminated),
+        })
+        total_permanent  += len(permanent)
+        total_probation  += len(probation)
+        total_terminated += len(terminated)
 
     return render(request, 'onboarding/staff_directory.html', {
         'staff_by_department': staff_by_department,
         'total_permanent':  total_permanent,
         'total_probation':  total_probation,
         'total_terminated': total_terminated,
-        'active_employees': EmployeeProfile.objects.filter(is_active=True).select_related('user').order_by('user__first_name'),
+        'active_employees': EmployeeProfile.objects.filter(is_active=True).exclude(user__role=User.Role.MD).select_related('user').order_by('user__first_name'),
     })
 
 
